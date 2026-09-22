@@ -1,0 +1,27 @@
+---
+BasedOnStyle: LLVM
+Language: C
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# Empty lines
+MaxEmptyLinesToKeep: 2
+SeparateDefinitionBlocks: Leave
+
+# Braces
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Pointer alignment
+PointerAlignment: Right
+
+# Spacing
+SpaceBeforeParens: ControlStatements
+
+# Macros
+AlignConsecutiveMacros: Consecutive
