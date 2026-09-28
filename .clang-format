@@ -25,3 +25,6 @@ SpaceBeforeParens: ControlStatements
 
 # Macros
 AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: Left
+IndentPPDirectives: BeforeHash
+
