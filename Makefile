@@ -10,7 +10,7 @@ CXX = g++
 
 # TODO: Add correct compiler flags (e.g. -std=c11, optimization flags, ...)
 CFLAGS = -Wall -Wextra
-CXXFLAGS = -Wall -Wextra
+CXXFLAGS = -Wall -Wextra -I$(SRC_DIR)
 
 
 # Debug flags (uncomment if needed)
@@ -23,7 +23,12 @@ SRC_DIR = src
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 TARGET = ifj26
 
-.PHONY: build debug clean
+TEST_DIR = tests
+TEST_C_SRCS = $(filter-out $(SRC_DIR)/main.c, $(SRCS))
+TEST_OBJS = $(TEST_C_SRCS:.c=.o)
+TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
+
+.PHONY: build debug clean test
 
 build:
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
@@ -31,7 +36,14 @@ build:
 debug:
 	$(CC) $(CFLAGS) $(DEBUG_CFLAGS) -o $(TARGET) $(SRCS)
 
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+test: $(TEST_OBJS) $(TEST_SRC)
+	$(CXX) $(CXXFLAGS) $(TEST_OBJS) $(TEST_SRC) -lgtest -lgtest_main -lpthread -o run_tests
+	./run_tests
+
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) run_tests $(SRC_DIR)/*.o
 
 # End of file
