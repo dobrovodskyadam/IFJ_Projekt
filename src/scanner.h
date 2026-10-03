@@ -3,13 +3,36 @@
 
 typedef enum
 {
- Token_KW,
  Token_ID,
- Token_OP,
  Token_INT,
  Token_DOUBLE,
  TOKEN_STRING,
-
+ TOKEN_PLUS,
+ TOKEN_MINUS,
+ TOKEN_IF,
+ TOkEN_ELSE,
+ TOKEN_WHILE,
+ TOKEN_FOR,
+ TOKEN_AND,
+ TOKEN_OR,
+ TOKEN_TRUE,
+ TOKEN_FALSE,
+ TOKEN_EQ,
+ TOKEN_GR_EQ,
+ TOKEN_LS_EQ,
+ TOKEN_LS,
+ TOKEN_GR,
+ TOKEN_DEF,
+ TOKEN_MUL,
+ TOKEN_DIV
+ TOKEN_NEQ,
+ TOKEN_LPAREN,
+ TOKEN_RPAREN,
+ TOKEN_LBRACKET,
+ TOKEN_RBRACKET,
+ TOKEN_LBRACE,
+ TOKEN_RBRACE,
+ TOKEN_ASSIGN
 } TokenType;
 
 typedef struct 
@@ -22,6 +45,14 @@ typedef struct
     } value;
     /*to do*/
 }Token;
+
+typedef struct
+{
+    char *str;
+    int length;
+    int capacity;
+}TokenString;
+
 
 
 #ifdef __cplusplus
