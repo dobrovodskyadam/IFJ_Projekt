@@ -3,9 +3,9 @@
 
 typedef enum
 {
- Token_ID,
- Token_INT,
- Token_DOUBLE,
+ TOKEN_ID,
+ TOKEN_INT,
+ TOKEN_DOUBLE,
  TOKEN_STRING,
  TOKEN_PLUS,
  TOKEN_MINUS,
@@ -32,7 +32,8 @@ typedef enum
  TOKEN_RBRACKET,
  TOKEN_LBRACE,
  TOKEN_RBRACE,
- TOKEN_ASSIGN
+ TOKEN_ASSIGN,
+ TOKEN_ERROR
 } TokenType;
 
 typedef struct 
