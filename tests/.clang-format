@@ -1,0 +1,5 @@
+# Special clang-format for test files
+
+BasedOnStyle: InheritParentConfig
+IndentAccessModifiers: true
+AccessModifierOffset: -4
