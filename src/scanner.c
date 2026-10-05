@@ -7,7 +7,10 @@ typedef enum
 {
  STATE_START,
  STATE_NUM,
- STATE_NUM_DOT
+ STATE_NUM_DOT,
+ STATE_EXP,
+ STATE_EXP_SIGN,
+ STATE_EXP_NUM
  }STATE;
 
 void initTokenString (TokenString *token_buffer) {
@@ -59,6 +62,18 @@ void getToken (Token *token) {
                     state = STATE_NUM_DOT;
                     addChar(&token_buffer, c);
                     token->type = TOKEN_DOUBLE;
+                } else if (c == '+') {
+                    token->type = TOKEN_PLUS;
+                    return;
+                } else if (c == '-') {
+                    token->type = TOKEN_MINUS;
+                    return;
+                } else if (c == '*') {
+                    token->type = TOKEN_MUL;
+                    return;
+                } else if (c == '/') {
+                    token->type = TOKEN_DIV;
+                    return;
                 } else {
                     token->type = TOKEN_ERROR;
                     return;
@@ -73,6 +88,13 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                     token->type = TOKEN_DOUBLE;
                     state = STATE_NUM_DOT;
+                } else if(c == 'e' || c == 'E') {
+                    addChar(&token_buffer, c);
+                    token->type = TOKEN_DOUBLE;
+                    state = STATE_EXP;
+                } else if (token->type == TOKEN_DOUBLE && (c == 'd' || c == 'D')) {
+                    token->value.double_val = atof(token_buffer.str);
+                    return;
                 } else {
                     if (token->type == TOKEN_INT) {
                         token->value.int_val = atoi(token_buffer.str);
@@ -93,6 +115,42 @@ void getToken (Token *token) {
                     return;
                 }
                 break;
+            
+            case STATE_EXP:
+                if (isdigit(c)) {
+                    state = STATE_EXP_NUM;
+                    addChar(&token_buffer, c);
+                } else if (c == '+' || c == '-') {
+                    state = STATE_EXP_SIGN;
+                    addChar(&token_buffer, c);
+                } else {
+                    token->type = TOKEN_ERROR;
+                    return;
+                }
+            break;
+
+            case STATE_EXP_SIGN:
+                if (isdigit(c)) {
+                    state = STATE_EXP_NUM;
+                    addChar(&token_buffer, c);
+                } else {
+                    token->type = TOKEN_ERROR;
+                    return;
+                }
+            break;
+
+            case STATE_EXP_NUM:
+                if (isdigit(c)) {
+                    state = STATE_EXP_NUM;
+                    addChar(&token_buffer, c);
+                } else if (c == 'd' || c == 'D'){
+                    token->value.double_val = atof(token_buffer.str);
+                    return;
+                } else {
+                    token->value.double_val = atof(token_buffer.str);
+                    return;
+                }
+            break;
         }
     }
 }
