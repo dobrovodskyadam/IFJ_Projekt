@@ -10,7 +10,10 @@ typedef enum
  STATE_NUM_DOT,
  STATE_EXP,
  STATE_EXP_SIGN,
- STATE_EXP_NUM
+ STATE_EXP_NUM,
+ STATE_ASSIGN,
+ STATE_AND,
+ STATE_OR
  }STATE;
 
 void initTokenString (TokenString *token_buffer) {
@@ -74,6 +77,22 @@ void getToken (Token *token) {
                 } else if (c == '/') {
                     token->type = TOKEN_DIV;
                     return;
+                } else if (c == '<') {
+                    state = STATE_ASSIGN;
+                    token->type = TOKEN_LS;
+                } else if (c == '>') {
+                    state = STATE_ASSIGN;
+                    token->type = TOKEN_GR;
+                } else if (c == '=') {
+                    state = STATE_ASSIGN;
+                    token->type = TOKEN_ASSIGN;
+                } else if (c == '!') {
+                    state = STATE_ASSIGN;
+                    token->type = TOKEN_NOT;
+                } else if (c == '&') {
+                    state = STATE_AND;
+                } else if (c == '|') {
+                    state = STATE_OR;
                 } else {
                     token->type = TOKEN_ERROR;
                     return;
@@ -127,7 +146,7 @@ void getToken (Token *token) {
                     token->type = TOKEN_ERROR;
                     return;
                 }
-            break;
+                break;
 
             case STATE_EXP_SIGN:
                 if (isdigit(c)) {
@@ -137,7 +156,7 @@ void getToken (Token *token) {
                     token->type = TOKEN_ERROR;
                     return;
                 }
-            break;
+                break;
 
             case STATE_EXP_NUM:
                 if (isdigit(c)) {
@@ -150,7 +169,45 @@ void getToken (Token *token) {
                     token->value.double_val = atof(token_buffer.str);
                     return;
                 }
-            break;
+                break;
+
+            case STATE_ASSIGN:
+                if (token->type == TOKEN_LS && c == '=') {
+                    token->type = TOKEN_LS_EQ;
+                    return;
+                } else if (token->type == TOKEN_GR && c == '=') {
+                    token->type = TOKEN_GR_EQ;
+                    return;
+                } else if (token->type == TOKEN_ASSIGN && c == '=') {
+                    token->type = TOKEN_EQ;
+                    return;
+                } else if (token->type == TOKEN_NOT && c == '=') {
+                    token->type = TOKEN_NEQ;
+                    return;
+                } else {
+                    return;
+                }
+                break;
+
+            case STATE_AND:
+                if (c == '&') {
+                    token->type = TOKEN_AND;
+                    return;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    return;
+                }
+                break;
+
+            case STATE_OR:
+                if (c == '|') {
+                    token->type = TOKEN_OR;
+                    return;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    return;
+                }
+                break;
         }
     }
 }

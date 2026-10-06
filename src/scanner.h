@@ -33,6 +33,7 @@ typedef enum
  TOKEN_LBRACE,
  TOKEN_RBRACE,
  TOKEN_ASSIGN,
+ TOKEN_NOT,
  TOKEN_ERROR
 } TokenType;
 
