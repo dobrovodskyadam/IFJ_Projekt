@@ -53,7 +53,8 @@ void getToken (Token *token) {
     STATE state = STATE_START;
     TokenString token_buffer;
     initTokenString(&token_buffer);
-    while (1) {
+    int token_found = 0;
+    while (!token_found) {
         int c;
         c = fgetc(stdin);
         switch (state)
@@ -69,16 +70,20 @@ void getToken (Token *token) {
                     token->type = TOKEN_DOUBLE;
                 } else if (c == '+') {
                     token->type = TOKEN_PLUS;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (c == '-') {
                     token->type = TOKEN_MINUS;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (c == '*') {
                     token->type = TOKEN_MUL;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (c == '/') {
                     token->type = TOKEN_DIV;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (c == '<') {
                     state = STATE_ASSIGN;
                     token->type = TOKEN_LS;
@@ -97,13 +102,16 @@ void getToken (Token *token) {
                     state = STATE_OR;
                 } else if (c == '(') {
                     token->type = TOKEN_LPAREN;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (c == ')'){
                     token->type = TOKEN_RPAREN;
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
@@ -123,7 +131,8 @@ void getToken (Token *token) {
                     state = STATE_NUM_UNDERSCORE;
                 } else if (token->type == TOKEN_DOUBLE && (c == 'd' || c == 'D')) {
                     token->value.double_val = atof(token_buffer.str);
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
                     if (token->type == TOKEN_INT) {
                         token->value.int_val = atoi(token_buffer.str);
@@ -131,7 +140,9 @@ void getToken (Token *token) {
                     if (token->type == TOKEN_DOUBLE) {
                         token->value.double_val = atof(token_buffer.str);
                     }
-                    return;
+                    ungetc(c, stdin);
+                    token_found = 1;
+                    break;
                 }
                 break;
 
@@ -141,7 +152,8 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
@@ -151,7 +163,8 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
             
@@ -164,7 +177,8 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
@@ -174,7 +188,8 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
@@ -186,10 +201,13 @@ void getToken (Token *token) {
                     state = STATE_EXP_UNDERSCORE;
                 } else if (c == 'd' || c == 'D'){
                     token->value.double_val = atof(token_buffer.str);
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
                     token->value.double_val = atof(token_buffer.str);
-                    return;
+                    ungetc(c, stdin);
+                    token_found = 1;
+                    break;
                 }
                 break;
             
@@ -199,47 +217,59 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
             case STATE_ASSIGN:
                 if (token->type == TOKEN_LS && c == '=') {
                     token->type = TOKEN_LS_EQ;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (token->type == TOKEN_GR && c == '=') {
                     token->type = TOKEN_GR_EQ;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (token->type == TOKEN_ASSIGN && c == '=') {
                     token->type = TOKEN_EQ;
-                    return;
+                    token_found = 1;
+                    break;
                 } else if (token->type == TOKEN_NOT && c == '=') {
                     token->type = TOKEN_NEQ;
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
-                    return;
+                    ungetc(c, stdin);
+                    token_found = 1;
+                    break;
                 }
                 break;
 
             case STATE_AND:
                 if (c == '&') {
                     token->type = TOKEN_AND;
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
 
             case STATE_OR:
                 if (c == '|') {
                     token->type = TOKEN_OR;
-                    return;
+                    token_found = 1;
+                    break;
                 } else {
                     token->type = TOKEN_ERROR;
-                    return;
+                    token_found = 1;
+                    break;
                 }
                 break;
         }
     }
+    freeTokenString(&token_buffer);
 }
