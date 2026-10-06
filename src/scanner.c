@@ -8,9 +8,11 @@ typedef enum
  STATE_START,
  STATE_NUM,
  STATE_NUM_DOT,
+ STATE_NUM_UNDERSCORE,
  STATE_EXP,
  STATE_EXP_SIGN,
  STATE_EXP_NUM,
+ STATE_EXP_UNDERSCORE,
  STATE_ASSIGN,
  STATE_AND,
  STATE_OR
@@ -93,6 +95,12 @@ void getToken (Token *token) {
                     state = STATE_AND;
                 } else if (c == '|') {
                     state = STATE_OR;
+                } else if (c == '(') {
+                    token->type = TOKEN_LPAREN;
+                    return;
+                } else if (c == ')'){
+                    token->type = TOKEN_RPAREN;
+                    return;
                 } else {
                     token->type = TOKEN_ERROR;
                     return;
@@ -111,6 +119,8 @@ void getToken (Token *token) {
                     addChar(&token_buffer, c);
                     token->type = TOKEN_DOUBLE;
                     state = STATE_EXP;
+                } else if (c == '_') {
+                    state = STATE_NUM_UNDERSCORE;
                 } else if (token->type == TOKEN_DOUBLE && (c == 'd' || c == 'D')) {
                     token->value.double_val = atof(token_buffer.str);
                     return;
@@ -126,6 +136,16 @@ void getToken (Token *token) {
                 break;
 
             case STATE_NUM_DOT:
+                if (isdigit(c)) {
+                    state = STATE_NUM;
+                    addChar(&token_buffer, c);
+                } else {
+                    token->type = TOKEN_ERROR;
+                    return;
+                }
+                break;
+
+            case STATE_NUM_UNDERSCORE:
                 if (isdigit(c)) {
                     state = STATE_NUM;
                     addChar(&token_buffer, c);
@@ -162,11 +182,23 @@ void getToken (Token *token) {
                 if (isdigit(c)) {
                     state = STATE_EXP_NUM;
                     addChar(&token_buffer, c);
+                } else if (c == '_') {
+                    state = STATE_EXP_UNDERSCORE;
                 } else if (c == 'd' || c == 'D'){
                     token->value.double_val = atof(token_buffer.str);
                     return;
                 } else {
                     token->value.double_val = atof(token_buffer.str);
+                    return;
+                }
+                break;
+            
+            case STATE_EXP_UNDERSCORE:
+                if (isdigit(c)) {
+                    state = STATE_EXP_NUM;
+                    addChar(&token_buffer, c);
+                } else {
+                    token->type = TOKEN_ERROR;
                     return;
                 }
                 break;
