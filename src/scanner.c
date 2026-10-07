@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
 typedef enum 
 {
@@ -15,7 +16,9 @@ typedef enum
  STATE_EXP_UNDERSCORE,
  STATE_ASSIGN,
  STATE_AND,
- STATE_OR
+ STATE_OR,
+ STATE_STR,
+ STATE_ESCAPE
  }STATE;
 
 void initTokenString (TokenString *token_buffer) {
@@ -104,10 +107,12 @@ void getToken (Token *token) {
                     token->type = TOKEN_LPAREN;
                     token_found = 1;
                     break;
-                } else if (c == ')'){
+                } else if (c == ')') {
                     token->type = TOKEN_RPAREN;
                     token_found = 1;
                     break;
+                } else if (c == '"') {
+                    state = STATE_STR;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -269,6 +274,53 @@ void getToken (Token *token) {
                     break;
                 }
                 break;
+
+            case STATE_STR:
+                if (c == '"') {
+                    token->type = TOKEN_STRING;
+                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                    if (token->value.str_val == NULL) {
+                        token->type = TOKEN_ERROR_MEMORY;
+                    } else {
+                        strcpy(token->value.str_val, token_buffer.str);
+                    }
+                    token_found = 1;
+                    break;
+                } else if (c == '\\') {
+                    state = STATE_ESCAPE;
+                } 
+                else if (isascii(c) && c != '\n') {
+                    addChar(&token_buffer, c);
+                    state = STATE_STR;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                    break;
+                }
+                break;
+
+                case STATE_ESCAPE:
+                    if (c == '\\'){
+                        addChar(&token_buffer, '\\');
+                        state = STATE_STR;
+                    } else if (c == '"') {
+                        addChar(&token_buffer, '\"');
+                        state = STATE_STR;
+                    } else if (c == 'n') {
+                        addChar(&token_buffer, '\n');
+                        state = STATE_STR;
+                    } else if (c == 'r') {
+                        addChar(&token_buffer, '\r');
+                        state = STATE_STR;
+                    } else if (c == 't') {
+                        addChar(&token_buffer, '\t');
+                        state = STATE_STR;
+                    } else {
+                        token->type = TOKEN_ERROR;
+                        token_found = 1;
+                        break;
+                    }
+                    break;
         }
     }
     freeTokenString(&token_buffer);
