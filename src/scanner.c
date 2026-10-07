@@ -18,7 +18,12 @@ typedef enum
  STATE_AND,
  STATE_OR,
  STATE_STR,
- STATE_ESCAPE
+ STATE_ESCAPE,
+ STATE_STR_QUOTE1,
+ STATE_STR_QUOTE2,
+ STATE_STR_QUOTE3,
+ STATE_STR_QUOTE2_END,
+ STATE_STR_QUOTE3_END
  }STATE;
 
 void initTokenString (TokenString *token_buffer) {
@@ -112,7 +117,7 @@ void getToken (Token *token) {
                     token_found = 1;
                     break;
                 } else if (c == '"') {
-                    state = STATE_STR;
+                    state = STATE_STR_QUOTE1;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -275,17 +280,9 @@ void getToken (Token *token) {
                 }
                 break;
 
-            case STATE_STR:
+            case STATE_STR_QUOTE1:
                 if (c == '"') {
-                    token->type = TOKEN_STRING;
-                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
-                    if (token->value.str_val == NULL) {
-                        token->type = TOKEN_ERROR_MEMORY;
-                    } else {
-                        strcpy(token->value.str_val, token_buffer.str);
-                    }
-                    token_found = 1;
-                    break;
+                    state = STATE_STR_QUOTE2;
                 } else if (c == '\\') {
                     state = STATE_ESCAPE;
                 } 
@@ -299,28 +296,110 @@ void getToken (Token *token) {
                 }
                 break;
 
-                case STATE_ESCAPE:
-                    if (c == '\\'){
-                        addChar(&token_buffer, '\\');
-                        state = STATE_STR;
-                    } else if (c == '"') {
-                        addChar(&token_buffer, '\"');
-                        state = STATE_STR;
-                    } else if (c == 'n') {
-                        addChar(&token_buffer, '\n');
-                        state = STATE_STR;
-                    } else if (c == 'r') {
-                        addChar(&token_buffer, '\r');
-                        state = STATE_STR;
-                    } else if (c == 't') {
-                        addChar(&token_buffer, '\t');
-                        state = STATE_STR;
-                    } else {
-                        token->type = TOKEN_ERROR;
-                        token_found = 1;
-                        break;
-                    }
+            case STATE_STR:
+                if (c == '"') {
+                    state = STATE_STR_QUOTE2;
+                } else if (c == '\\') {
+                    state = STATE_ESCAPE;
+                } 
+                else if (isascii(c) && c != '\n') {
+                    addChar(&token_buffer, c);
+                    state = STATE_STR;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
                     break;
+                }
+                break;
+
+            case STATE_ESCAPE:
+                if (c == '\\'){
+                    addChar(&token_buffer, '\\');
+                    state = STATE_STR;
+                } else if (c == '"') {
+                    addChar(&token_buffer, '\"');
+                    state = STATE_STR;
+                } else if (c == 'n') {
+                    addChar(&token_buffer, '\n');
+                    state = STATE_STR;
+                } else if (c == 'r') {
+                    addChar(&token_buffer, '\r');
+                    state = STATE_STR;
+                } else if (c == 't') {
+                    addChar(&token_buffer, '\t');
+                    state = STATE_STR;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                    break;
+                }
+                break;
+            
+            case STATE_STR_QUOTE2:
+                if (c == '"') {
+                    state = STATE_STR_QUOTE3;
+                } else {
+                    token->type = TOKEN_STRING;
+                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                    if (token->value.str_val == NULL) {
+                        token->type = TOKEN_ERROR_MEMORY;
+                    } else {
+                        strcpy(token->value.str_val, token_buffer.str);
+                    }
+                    token_found = 1;
+                    break;
+                }
+                break;
+
+            case STATE_STR_QUOTE3:
+                if (c == '"') {
+                    state = STATE_STR_QUOTE2_END;
+                } else if (isascii(c)) {
+                    addChar(&token_buffer, c);
+                    state = STATE_STR_QUOTE3;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                    break;
+                }
+                break;
+
+            case STATE_STR_QUOTE2_END:
+                if (c == '"') {
+                    state = STATE_STR_QUOTE3_END;
+                } else if (isascii(c)) {
+                    addChar(&token_buffer, '"');
+                    addChar(&token_buffer, c);
+                    state = STATE_STR_QUOTE3;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                    break;
+                }
+                break;
+            
+            case STATE_STR_QUOTE3_END:
+                if (c == '"') {
+                    token->type = TOKEN_STRING;
+                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                    if (token->value.str_val == NULL) {
+                        token->type = TOKEN_ERROR_MEMORY;
+                    } else {
+                        strcpy(token->value.str_val, token_buffer.str);
+                    }
+                    token_found = 1;
+                    break;
+                } else if (isascii(c)) {
+                    addChar(&token_buffer, '"');
+                    addChar(&token_buffer, '"');
+                    addChar(&token_buffer, c);
+                    state = STATE_STR_QUOTE3;
+                } else {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                    break;
+                }
+                break;
         }
     }
     freeTokenString(&token_buffer);
