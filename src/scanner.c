@@ -538,12 +538,50 @@ void getToken (Token *token) {
         }
 
         if (state == STATE_IS_KW) {
-            token->type = TOKEN_ID;
-            token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
-            if (token->value.str_val == NULL) {
-                token->type = TOKEN_ERROR_MEMORY;
+            if (strcmp(token_buffer.str, "def") == 0) {
+                token->type = TOKEN_DEF;
+            } else if (strcmp(token_buffer.str, "do") == 0) {
+                token->type = TOKEN_DO;
+            } else if (strcmp(token_buffer.str, "Double") == 0) {
+                token->type = TOKEN_KW_DOUBLE;
+            } else if (strcmp(token_buffer.str, "else") == 0) {
+                token->type = TOKEN_ELSE;
+            } else if (strcmp(token_buffer.str, "if") == 0) {
+                token->type = TOKEN_IF;
+            } else if (strcmp(token_buffer.str, "import") == 0) {
+                token->type = TOKEN_IMPORT;
+            } else if (strcmp(token_buffer.str, "Int") == 0) {
+                token->type = TOKEN_KW_INT;
+            } else if (strcmp(token_buffer.str, "return") == 0) {
+                token->type = TOKEN_RETURN;
+            } else if (strcmp(token_buffer.str, "String") == 0) {
+                token->type = TOKEN_KW_STRING;
+            } else if (strcmp(token_buffer.str, "then") == 0) {
+                token->type = TOKEN_THEN;
+            } else if (strcmp(token_buffer.str, "Unit") == 0) {
+                token->type = TOKEN_UNIT;
+            } else if (strcmp(token_buffer.str, "val") == 0) {
+                token->type = TOKEN_VAL;
+            } else if (strcmp(token_buffer.str, "var") == 0) {
+                token->type = TOKEN_VAR;
+            } else if (strcmp(token_buffer.str, "while") == 0) {
+                token->type = TOKEN_WHILE;
+            } else if (strcmp(token_buffer.str, "Boolean") == 0) {
+                token->type = TOKEN_BOOLEAN;
+            } else if (strcmp(token_buffer.str, "case") == 0) {
+                token->type = TOKEN_CASE;
+            } else if (strcmp(token_buffer.str, "for") == 0) {
+                token->type = TOKEN_FOR;
+            } else if (strcmp(token_buffer.str, "List") == 0) {
+                token->type = TOKEN_LIST;
             } else {
-                strcpy(token->value.str_val, token_buffer.str);
+                token->type = TOKEN_ID;
+                token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                if (token->value.str_val == NULL) {
+                    token->type = TOKEN_ERROR_MEMORY;
+                } else {
+                    strcpy(token->value.str_val, token_buffer.str);
+                }
             }
             token_found = 1;
         }
