@@ -23,31 +23,35 @@ typedef enum
  STATE_STR_QUOTE2,
  STATE_STR_QUOTE3,
  STATE_STR_QUOTE2_END,
- STATE_STR_QUOTE3_END
+ STATE_STR_QUOTE3_END,
+ STATE_ERROR_MEMORY
  }STATE;
 
-void initTokenString (TokenString *token_buffer) {
+int initTokenString (TokenString *token_buffer) {
     token_buffer->length = 0;
     token_buffer->capacity = 8;
     token_buffer->str = malloc(token_buffer->capacity * sizeof(char));
 
     if (token_buffer->str == NULL) {
-        exit(99);
+        return 0;
     }
+    return 1;
 }
 
-void addChar (TokenString *token_buffer, char c) {
+int addChar (TokenString *token_buffer, char c) {
     if (token_buffer->length == token_buffer->capacity) {
-        token_buffer->capacity = token_buffer->capacity * 2;
-        token_buffer->str = realloc(token_buffer->str, token_buffer->capacity * sizeof(char));
+        int new_capacity = token_buffer->capacity * 2;
+        char *tmp = realloc(token_buffer->str, new_capacity * sizeof(char));
 
-        if (token_buffer->str == NULL) {
-            exit(99);
+        if (tmp == NULL) {
+            return 0;
         }
+        token_buffer->str = tmp;
+        token_buffer->capacity = new_capacity;
     }
-
     token_buffer->str[token_buffer->length] = c;
     token_buffer->length = token_buffer->length + 1;
+    return 1;
 }
 
 void freeTokenString (TokenString *token_buffer) {
@@ -60,7 +64,10 @@ void freeTokenString (TokenString *token_buffer) {
 void getToken (Token *token) {
     STATE state = STATE_START;
     TokenString token_buffer;
-    initTokenString(&token_buffer);
+    if (!initTokenString(&token_buffer)) {
+        token->type = TOKEN_ERROR_MEMORY;
+        return;
+    }
     int token_found = 0;
     while (!token_found) {
         int c;
@@ -70,12 +77,19 @@ void getToken (Token *token) {
             case STATE_START:
                 if (isdigit(c)) {
                     state = STATE_NUM;
-                    addChar(&token_buffer, c);
-                    token->type = TOKEN_INT;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_INT;
+                    }
                 } else if (c == '.') {
                     state = STATE_NUM_DOT;
-                    addChar(&token_buffer, c);
-                    token->type = TOKEN_DOUBLE;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_DOUBLE;
+                    }
+                    
                 } else if (c == '+') {
                     token->type = TOKEN_PLUS;
                     token_found = 1;
@@ -128,15 +142,23 @@ void getToken (Token *token) {
             case STATE_NUM:
                 if (isdigit(c)) {
                     state = STATE_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (token->type == TOKEN_INT && c == '.') {
-                    addChar(&token_buffer, c);
-                    token->type = TOKEN_DOUBLE;
                     state = STATE_NUM_DOT;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_DOUBLE;
+                    }
                 } else if(c == 'e' || c == 'E') {
-                    addChar(&token_buffer, c);
-                    token->type = TOKEN_DOUBLE;
                     state = STATE_EXP;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_DOUBLE;
+                    }
                 } else if (c == '_') {
                     state = STATE_NUM_UNDERSCORE;
                 } else if (token->type == TOKEN_DOUBLE && (c == 'd' || c == 'D')) {
@@ -159,7 +181,9 @@ void getToken (Token *token) {
             case STATE_NUM_DOT:
                 if (isdigit(c)) {
                     state = STATE_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -170,7 +194,9 @@ void getToken (Token *token) {
             case STATE_NUM_UNDERSCORE:
                 if (isdigit(c)) {
                     state = STATE_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -181,10 +207,14 @@ void getToken (Token *token) {
             case STATE_EXP:
                 if (isdigit(c)) {
                     state = STATE_EXP_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == '+' || c == '-') {
                     state = STATE_EXP_SIGN;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -195,7 +225,9 @@ void getToken (Token *token) {
             case STATE_EXP_SIGN:
                 if (isdigit(c)) {
                     state = STATE_EXP_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -206,7 +238,9 @@ void getToken (Token *token) {
             case STATE_EXP_NUM:
                 if (isdigit(c)) {
                     state = STATE_EXP_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == '_') {
                     state = STATE_EXP_UNDERSCORE;
                 } else if (c == 'd' || c == 'D'){
@@ -224,7 +258,9 @@ void getToken (Token *token) {
             case STATE_EXP_UNDERSCORE:
                 if (isdigit(c)) {
                     state = STATE_EXP_NUM;
-                    addChar(&token_buffer, c);
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -287,8 +323,10 @@ void getToken (Token *token) {
                     state = STATE_ESCAPE;
                 } 
                 else if (isascii(c) && c != '\n') {
-                    addChar(&token_buffer, c);
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -303,8 +341,10 @@ void getToken (Token *token) {
                     state = STATE_ESCAPE;
                 } 
                 else if (isascii(c) && c != '\n') {
-                    addChar(&token_buffer, c);
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -314,20 +354,30 @@ void getToken (Token *token) {
 
             case STATE_ESCAPE:
                 if (c == '\\'){
-                    addChar(&token_buffer, '\\');
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, '\\')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == '"') {
-                    addChar(&token_buffer, '\"');
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, '\"')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == 'n') {
-                    addChar(&token_buffer, '\n');
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, '\n')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == 'r') {
-                    addChar(&token_buffer, '\r');
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, '\r')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == 't') {
-                    addChar(&token_buffer, '\t');
                     state = STATE_STR;
+                    if (!addChar(&token_buffer, '\t')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -355,8 +405,10 @@ void getToken (Token *token) {
                 if (c == '"') {
                     state = STATE_STR_QUOTE2_END;
                 } else if (isascii(c)) {
-                    addChar(&token_buffer, c);
                     state = STATE_STR_QUOTE3;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -368,9 +420,13 @@ void getToken (Token *token) {
                 if (c == '"') {
                     state = STATE_STR_QUOTE3_END;
                 } else if (isascii(c)) {
-                    addChar(&token_buffer, '"');
-                    addChar(&token_buffer, c);
                     state = STATE_STR_QUOTE3;
+                    if (!addChar(&token_buffer, '"')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -390,16 +446,30 @@ void getToken (Token *token) {
                     token_found = 1;
                     break;
                 } else if (isascii(c)) {
-                    addChar(&token_buffer, '"');
-                    addChar(&token_buffer, '"');
-                    addChar(&token_buffer, c);
                     state = STATE_STR_QUOTE3;
+                    if (!addChar(&token_buffer, '"')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                    if (!addChar(&token_buffer, '"')) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
                     break;
                 }
                 break;
+
+            default:
+                break;
+        }
+
+        if (state == STATE_ERROR_MEMORY) {
+            token->type = TOKEN_ERROR_MEMORY;
+            token_found = 1;
         }
     }
     freeTokenString(&token_buffer);
