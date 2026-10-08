@@ -24,7 +24,10 @@ typedef enum
  STATE_STR_QUOTE3,
  STATE_STR_QUOTE2_END,
  STATE_STR_QUOTE3_END,
- STATE_ERROR_MEMORY
+ STATE_ERROR_MEMORY,
+ STATE_WORD,
+ STATE_ID,
+ STATE_IS_KW
  }STATE;
 
 int initTokenString (TokenString *token_buffer) {
@@ -75,7 +78,12 @@ void getToken (Token *token) {
         switch (state)
         {
             case STATE_START:
-                if (isdigit(c)) {
+                if (isalpha(c)) {
+                    state = STATE_WORD;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else if (isdigit(c)) {
                     state = STATE_NUM;
                     if (!addChar(&token_buffer, c)) {
                         state = STATE_ERROR_MEMORY;
@@ -89,7 +97,11 @@ void getToken (Token *token) {
                     } else {
                         token->type = TOKEN_DOUBLE;
                     }
-                    
+                } else if (c == '_') {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
                 } else if (c == '+') {
                     token->type = TOKEN_PLUS;
                     token_found = 1;
@@ -267,6 +279,59 @@ void getToken (Token *token) {
                     break;
                 }
                 break;
+
+            case STATE_WORD:
+                if (isalpha(c)) {
+                    state = STATE_WORD;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else if (isdigit(c)) {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else if (c == '_') {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else {
+                    ungetc(c, stdin);
+                    state = STATE_IS_KW;
+                }
+                break;
+
+            case STATE_ID: {
+                if (isalpha(c)) {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else if (isdigit(c)) {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else if (c == '_') {
+                    state = STATE_ID;
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    }
+                } else {
+                    ungetc(c, stdin);
+                    token->type = TOKEN_ID;
+                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                    if (token->value.str_val == NULL) {
+                        token->type = TOKEN_ERROR_MEMORY;
+                    } else {
+                        strcpy(token->value.str_val, token_buffer.str);
+                    }
+                    token_found = 1;
+                    break;
+                }
+                break;
+            }
 
             case STATE_ASSIGN:
                 if (token->type == TOKEN_LS && c == '=') {
@@ -469,6 +534,17 @@ void getToken (Token *token) {
 
         if (state == STATE_ERROR_MEMORY) {
             token->type = TOKEN_ERROR_MEMORY;
+            token_found = 1;
+        }
+
+        if (state == STATE_IS_KW) {
+            token->type = TOKEN_ID;
+            token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+            if (token->value.str_val == NULL) {
+                token->type = TOKEN_ERROR_MEMORY;
+            } else {
+                strcpy(token->value.str_val, token_buffer.str);
+            }
             token_found = 1;
         }
     }
