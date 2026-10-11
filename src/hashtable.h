@@ -1,16 +1,47 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
+#define MAX_ITEM_ID 1024
+#define MAX_HTAB_ITEMS 1024
 
-typedef struct htab {
-    //TODO
-}htab_t;
+typedef enum {
+    VAR,
+    FUN,
+    INT,
+    DUB
+} item_type;
 
-void htab_init(htab_t *tab);
+typedef enum {
+    NOT,
+    USE,
+    DEL
+} item_used;
+
+typedef struct {
+    char id[MAX_ITEM_ID];
+    item_type type;
+    bool modif;
+    unsigned id;
+    item_used used;
+} htab_item_t;
+
+typedef htab_item_t *htab_t;
+
+
+unsigned int hash_func (char *id);
+
+void htab_init (htab_t *tab);
+
+bool item_add (htab_t *tab, char *id, item_type type, bool modif, int id_cnt); //TODO add parameters
+htab_item_t *item_lookup (htab_t *tab, char *id);
+void item_del (htab_t *tab, char *id);
+
+bool item_col_check (htab_t *tab, char *id);
+
+void htab_dtor (htab_t *tab);
 
 // TODO - lookup_item();
 //        mod_item();
-//        struct htab_item;
 //        ...
 
 
