@@ -49,7 +49,9 @@ typedef enum
  TOKEN_KW_STRING,
  TOKEN_KW_INT,
  TOKEN_KW_DOUBLE,
- TOKEN_EOF
+ TOKEN_EOF,
+ TOKEN_INDENT,
+ TOKEN_DEDENT
 } TokenType;
 
 typedef struct 
@@ -69,6 +71,14 @@ typedef struct
     int length;
     int capacity;
 }TokenString;
+
+typedef struct
+{
+    int indent_stack[100];
+    int stack_top;
+    int dedent;
+    int new_line;
+}ScannerData;
 
 
 

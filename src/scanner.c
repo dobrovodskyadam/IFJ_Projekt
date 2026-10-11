@@ -36,6 +36,13 @@ typedef enum
  STATE_COMMENT_NESTING_AFTER
  }STATE;
 
+void initScannerData (ScannerData *scanner) {
+    scanner->indent_stack[0] = 0;
+    scanner->stack_top = 0;
+    scanner->dedent = 0;
+    scanner->new_line = 1;
+}
+
 int initTokenString (TokenString *token_buffer) {
     token_buffer->length = 0;
     token_buffer->capacity = 8;
