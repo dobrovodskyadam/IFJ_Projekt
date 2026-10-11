@@ -29,7 +29,11 @@ typedef enum
  STATE_ID,
  STATE_IS_KW,
  STATE_IS_COMMENT,
- STATE_COMMENT
+ STATE_COMMENT,
+ STATE_COMMENT_NESTING,
+ STATE_COMMENT_NESTING_START,
+ STATE_COMMENT_NESTING_END,
+ STATE_COMMENT_NESTING_AFTER
  }STATE;
 
 int initTokenString (TokenString *token_buffer) {
@@ -74,6 +78,8 @@ void getToken (Token *token) {
         return;
     }
     int token_found = 0;
+    int comment_nesting = 0;
+    int comment_new_line = 0;
     while (!token_found) {
         int c;
         c = fgetc(stdin);
@@ -531,6 +537,9 @@ void getToken (Token *token) {
             case STATE_IS_COMMENT:
                 if (c == '/') {
                     state = STATE_COMMENT;
+                } else if (c == '*') {
+                    comment_nesting++;
+                    state = STATE_COMMENT_NESTING;
                 } else {
                     ungetc(c, stdin);
                     token->type = TOKEN_DIV;
@@ -546,6 +555,80 @@ void getToken (Token *token) {
                     state = STATE_COMMENT;
                 }
                 break;
+
+            case STATE_COMMENT_NESTING:
+                if (c == '/') {
+                    state = STATE_COMMENT_NESTING_START;
+                } else if (c == '*') {
+                    state = STATE_COMMENT_NESTING_END;
+                } else if (c == EOF) {
+                    token_found = 1;
+                    token->type = TOKEN_ERROR;
+                    break;
+                } else if (c == '\n') {
+                    comment_new_line++;
+                } else {
+                    state = STATE_COMMENT_NESTING;
+                }
+                break;
+
+            case STATE_COMMENT_NESTING_START:
+                if (c == '*') {
+                    comment_nesting++;
+                    state = STATE_COMMENT_NESTING;
+                } else if (c == EOF) {
+                    token_found = 1;
+                    token->type = TOKEN_ERROR;
+                    break;
+                } else if (c == '\n') {
+                    comment_new_line++;
+                    state = STATE_COMMENT_NESTING;
+                } else {
+                    state = STATE_COMMENT_NESTING;
+                }
+                break;
+
+            case STATE_COMMENT_NESTING_END:
+                if (c == '/') {
+                    comment_nesting--;
+                    if (comment_nesting == 0){
+                        if (comment_new_line == 0) {
+                            state = STATE_START;
+                        } else {
+                            state = STATE_COMMENT_NESTING_AFTER;
+                        }
+                    } else {
+                        state = STATE_COMMENT_NESTING;
+                    }
+                } else if (c == '*') {
+                    state = STATE_COMMENT_NESTING_END;
+                } else if (c == EOF) {
+                    token_found = 1;
+                    token->type = TOKEN_ERROR;
+                    break;
+                } else if (c == '\n') {
+                    comment_new_line++;
+                    state = STATE_COMMENT_NESTING;
+                } else {
+                    state = STATE_COMMENT_NESTING;
+                }
+                break;
+
+            case STATE_COMMENT_NESTING_AFTER:
+                comment_new_line = 0;
+                if (c == '\n') {
+                    state = STATE_START;
+                } else if (isspace(c)) {
+                    state = STATE_COMMENT_NESTING_AFTER;
+                } else if (c == EOF) {
+                    token_found = 1;
+                    token->type = TOKEN_EOF;
+                    break;
+                } else {
+                    token_found = 1;
+                    token->type = TOKEN_ERROR;
+                    break;
+                }
 
             default:
                 break;
