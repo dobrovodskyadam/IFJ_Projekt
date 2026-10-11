@@ -33,7 +33,8 @@ typedef enum
  STATE_COMMENT_NESTING,
  STATE_COMMENT_NESTING_START,
  STATE_COMMENT_NESTING_END,
- STATE_COMMENT_NESTING_AFTER
+ STATE_COMMENT_NESTING_AFTER,
+ STATE_INDENT
  }STATE;
 
 void initScannerData (ScannerData *scanner) {
@@ -77,7 +78,12 @@ void freeTokenString (TokenString *token_buffer) {
     token_buffer->str = NULL;
 }
 
-void getToken (Token *token) {
+void getToken (Token *token, ScannerData *scanner) {
+    if (scanner->dedent > 0) {
+        scanner->dedent--;
+        token->type = TOKEN_DEDENT;
+        return;
+    }
     STATE state = STATE_START;
     TokenString token_buffer;
     if (!initTokenString(&token_buffer)) {
@@ -87,13 +93,24 @@ void getToken (Token *token) {
     int token_found = 0;
     int comment_nesting = 0;
     int comment_new_line = 0;
+    int space_count = 0;
     while (!token_found) {
         int c;
         c = fgetc(stdin);
         switch (state)
         {
             case STATE_START:
-                if (isalpha(c)) {
+                if (scanner->new_line == 1) {
+                    if (c == ' ') {
+                        space_count++;
+                        state = STATE_INDENT;
+                    } else if (c == '\n') {
+                        state = STATE_START;
+                    } else {
+                        ungetc(c, stdin);
+                        state = STATE_INDENT;
+                    }
+                } else if (isalpha(c)) {
                     state = STATE_WORD;
                     if (!addChar(&token_buffer, c)) {
                         state = STATE_ERROR_MEMORY;
@@ -636,6 +653,58 @@ void getToken (Token *token) {
                     token->type = TOKEN_ERROR;
                     break;
                 }
+                break;
+
+            case STATE_INDENT:
+                if (c == ' ') {
+                    space_count++;
+                    state = STATE_INDENT;
+                } else if (c == '\n') {
+                    space_count = 0;
+                    state = STATE_START;
+                } else if ( c == '/') {
+                    int next_c = fgetc(stdin);
+                    if (next_c == '/') {
+                        space_count = 0;
+                        state = STATE_COMMENT;
+                    } else if (next_c == '*') {
+                        space_count = 0;
+                        state = STATE_COMMENT_NESTING;
+                    } else {
+                        token->type = TOKEN_ERROR;
+                        token_found = 1;
+                    }
+                } else {
+                    ungetc(c, stdin);
+                    int last_space_count = scanner->indent_stack[scanner->stack_top];
+                    if (space_count > last_space_count) {
+                        scanner->stack_top++;
+                        scanner->indent_stack[scanner->stack_top] = space_count;
+                        scanner->new_line = 0;
+                        token->type = TOKEN_INDENT;
+                        token_found = 1;
+                    } else if (space_count < last_space_count) {
+                        while (space_count < last_space_count && scanner->stack_top > 0) {
+                            scanner->stack_top--;
+                            last_space_count = scanner->indent_stack[scanner->stack_top];
+                            scanner->dedent++;
+                        }
+
+                        if (space_count != last_space_count) {
+                            token->type = TOKEN_ERROR;
+                            token_found = 1;
+                        } else {
+                            token->type = TOKEN_DEDENT;
+                            scanner->dedent--;
+                            scanner->new_line = 0;
+                            token_found = 1;
+                        }
+                    } else {
+                        scanner->new_line = 0;
+                        state = STATE_START;
+                    }
+                }
+                break;
 
             default:
                 break;
