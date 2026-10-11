@@ -27,7 +27,9 @@ typedef enum
  STATE_ERROR_MEMORY,
  STATE_WORD,
  STATE_ID,
- STATE_IS_KW
+ STATE_IS_KW,
+ STATE_IS_COMMENT,
+ STATE_COMMENT
  }STATE;
 
 int initTokenString (TokenString *token_buffer) {
@@ -115,9 +117,7 @@ void getToken (Token *token) {
                     token_found = 1;
                     break;
                 } else if (c == '/') {
-                    token->type = TOKEN_DIV;
-                    token_found = 1;
-                    break;
+                    state = STATE_IS_COMMENT;
                 } else if (c == '<') {
                     state = STATE_ASSIGN;
                     token->type = TOKEN_LS;
@@ -525,6 +525,25 @@ void getToken (Token *token) {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
                     break;
+                }
+                break;
+
+            case STATE_IS_COMMENT:
+                if (c == '/') {
+                    state = STATE_COMMENT;
+                } else {
+                    ungetc(c, stdin);
+                    token->type = TOKEN_DIV;
+                    token_found = 1;
+                    break;
+                }
+                break;
+
+            case STATE_COMMENT:
+                if (c == '\n') {
+                    state = STATE_START;
+                } else {
+                    state = STATE_COMMENT;
                 }
                 break;
 
