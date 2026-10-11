@@ -174,6 +174,15 @@ void getToken (Token *token, ScannerData *scanner) {
                     break;
                 } else if (c == '"') {
                     state = STATE_STR_QUOTE1;
+                } else if (c == '\n') {
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
+                } else if (c == EOF) {
+                    token->type = TOKEN_EOF;
+                    token_found = 1;
+                } else if (c == ' ') {
+                    state = STATE_START;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -574,6 +583,7 @@ void getToken (Token *token, ScannerData *scanner) {
 
             case STATE_COMMENT:
                 if (c == '\n') {
+                    ungetc(c, stdin);
                     state = STATE_START;
                 } else {
                     state = STATE_COMMENT;
@@ -641,6 +651,7 @@ void getToken (Token *token, ScannerData *scanner) {
             case STATE_COMMENT_NESTING_AFTER:
                 comment_new_line = 0;
                 if (c == '\n') {
+                    ungetc(c, stdin);
                     state = STATE_START;
                 } else if (isspace(c)) {
                     state = STATE_COMMENT_NESTING_AFTER;

@@ -51,7 +51,8 @@ typedef enum
  TOKEN_KW_DOUBLE,
  TOKEN_EOF,
  TOKEN_INDENT,
- TOKEN_DEDENT
+ TOKEN_DEDENT,
+ TOKEN_EOL
 } TokenType;
 
 typedef struct 
