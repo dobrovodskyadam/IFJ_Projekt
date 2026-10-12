@@ -213,18 +213,26 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == '_') {
                     state = STATE_NUM_UNDERSCORE;
                 } else if (token->type == TOKEN_DOUBLE && (c == 'd' || c == 'D')) {
-                    token->value.double_val = atof(token_buffer.str);
-                    token_found = 1;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->value.double_val = atof(token_buffer.str);
+                        token_found = 1;
+                    }
                     break;
                 } else {
-                    if (token->type == TOKEN_INT) {
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                         if (token->type == TOKEN_INT) {
                         token->value.int_val = atoi(token_buffer.str);
+                        }
+                        if (token->type == TOKEN_DOUBLE) {
+                            token->value.double_val = atof(token_buffer.str);
+                        }
+                        ungetc(c, stdin);
+                        token_found = 1;
                     }
-                    if (token->type == TOKEN_DOUBLE) {
-                        token->value.double_val = atof(token_buffer.str);
-                    }
-                    ungetc(c, stdin);
-                    token_found = 1;
                     break;
                 }
                 break;
@@ -295,13 +303,21 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == '_') {
                     state = STATE_EXP_UNDERSCORE;
                 } else if (c == 'd' || c == 'D'){
-                    token->value.double_val = atof(token_buffer.str);
-                    token_found = 1;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->value.double_val = atof(token_buffer.str);
+                        token_found = 1;
+                    }
                     break;
                 } else {
-                    token->value.double_val = atof(token_buffer.str);
-                    ungetc(c, stdin);
-                    token_found = 1;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->value.double_val = atof(token_buffer.str);
+                        ungetc(c, stdin);
+                        token_found = 1;
+                    }
                     break;
                 }
                 break;
@@ -336,12 +352,16 @@ void getToken (Token *token, ScannerData *scanner) {
                         state = STATE_ERROR_MEMORY;
                     }
                 } else {
-                    ungetc(c, stdin);
-                    state = STATE_IS_KW;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        ungetc(c, stdin);
+                        state = STATE_IS_KW;
+                    }
                 }
                 break;
 
-            case STATE_ID: {
+            case STATE_ID:
                 if (isalpha(c)) {
                     state = STATE_ID;
                     if (!addChar(&token_buffer, c)) {
@@ -358,19 +378,22 @@ void getToken (Token *token, ScannerData *scanner) {
                         state = STATE_ERROR_MEMORY;
                     }
                 } else {
-                    ungetc(c, stdin);
-                    token->type = TOKEN_ID;
-                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
-                    if (token->value.str_val == NULL) {
-                        token->type = TOKEN_ERROR_MEMORY;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
                     } else {
-                        strcpy(token->value.str_val, token_buffer.str);
+                        ungetc(c, stdin);
+                        token->type = TOKEN_ID;
+                        token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                        if (token->value.str_val == NULL) {
+                            token->type = TOKEN_ERROR_MEMORY;
+                        } else {
+                            strcpy(token->value.str_val, token_buffer.str);
+                        }
+                        token_found = 1;
                     }
-                    token_found = 1;
                     break;
                 }
                 break;
-            }
 
             case STATE_ASSIGN:
                 if (token->type == TOKEN_LS && c == '=') {
@@ -493,14 +516,18 @@ void getToken (Token *token, ScannerData *scanner) {
                 if (c == '"') {
                     state = STATE_STR_QUOTE3;
                 } else {
-                    token->type = TOKEN_STRING;
-                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
-                    if (token->value.str_val == NULL) {
-                        token->type = TOKEN_ERROR_MEMORY;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
                     } else {
-                        strcpy(token->value.str_val, token_buffer.str);
+                        token->type = TOKEN_STRING;
+                        token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                        if (token->value.str_val == NULL) {
+                            token->type = TOKEN_ERROR_MEMORY;
+                        } else {
+                            strcpy(token->value.str_val, token_buffer.str);
+                        }
+                        token_found = 1;
                     }
-                    token_found = 1;
                     break;
                 }
                 break;
@@ -540,14 +567,18 @@ void getToken (Token *token, ScannerData *scanner) {
             
             case STATE_STR_QUOTE3_END:
                 if (c == '"') {
-                    token->type = TOKEN_STRING;
-                    token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
-                    if (token->value.str_val == NULL) {
-                        token->type = TOKEN_ERROR_MEMORY;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
                     } else {
-                        strcpy(token->value.str_val, token_buffer.str);
+                        token->type = TOKEN_STRING;
+                        token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                        if (token->value.str_val == NULL) {
+                            token->type = TOKEN_ERROR_MEMORY;
+                        } else {
+                            strcpy(token->value.str_val, token_buffer.str);
+                        }
+                        token_found = 1;
                     }
-                    token_found = 1;
                     break;
                 } else if (isascii(c)) {
                     state = STATE_STR_QUOTE3;
