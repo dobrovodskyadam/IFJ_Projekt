@@ -183,6 +183,12 @@ void getToken (Token *token, ScannerData *scanner) {
                     token_found = 1;
                 } else if (c == ' ') {
                     state = STATE_START;
+                } else if (c == ';') {
+                    token->type = TOKEN_SEPARATOR;
+                    token_found = 1;
+                } else if (c == ':') {
+                    token->type = TOKEN_COLON;
+                    token_found = 1;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;

@@ -52,7 +52,9 @@ typedef enum
  TOKEN_EOF,
  TOKEN_INDENT,
  TOKEN_DEDENT,
- TOKEN_EOL
+ TOKEN_EOL,
+ TOKEN_SEPARATOR,
+ TOKEN_COLON
 } TokenType;
 
 typedef struct 
@@ -88,6 +90,8 @@ extern "C" {
 #endif
 
 Token scanner_get_next_token(void);
+void initScannerData (ScannerData *scanner);
+void getToken(Token *token, ScannerData *scanner);
 
 #ifdef __cplusplus
 }
