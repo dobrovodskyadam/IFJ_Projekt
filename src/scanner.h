@@ -54,7 +54,9 @@ typedef enum
  TOKEN_DEDENT,
  TOKEN_EOL,
  TOKEN_SEPARATOR,
- TOKEN_COLON
+ TOKEN_COLON,
+ TOKEN_IFJ,
+ TOKEN_MAIN
 } TokenType;
 
 typedef struct 
