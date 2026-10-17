@@ -14,16 +14,18 @@ void scope_add (symtab_t *stab){
         fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
-    htab_t *tab;
-    htab_init(tab);
+    htab_t tab = htab_init();
     scope_new->scope = tab;
     scope_new->next = stab->top;
     stab->top = scope_new;
 }
 
 void scope_rm (symtab_t *stab){
+    symtab_item_t *tmp;
+
     if(stab->top != NULL){
-        symtab_item_t *tmp = stab->top->next;
+        tmp = stab->top->next;
+        htab_dtor(stab->top->scope);
         free(stab->top);
         stab->top = tmp;
     }
