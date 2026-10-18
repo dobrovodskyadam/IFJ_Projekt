@@ -1,90 +1,77 @@
-#include <gtest/gtest.h>
+#include "scanner.h"
 #include <cstdio>
 #include <fstream>
-#include "scanner.h"
+#include <gtest/gtest.h>
 
-class ScannerTest : public::testing::Test {
+class ScannerTest : public ::testing::Test {
     protected:
-        const char* filename = "temp_test_input.tmp";
+        const char *filename = "temp_test_input.tmp";
 
-        void setInput(const std::string& input)
-        {
+        void setInput(const std::string &input) {
             std::ofstream out(filename);
             out << input;
             out.close();
 
-            std::freopen(filename,"r",stdin);
+            std::freopen(filename, "r", stdin);
         }
 
-        void TearDown() override{
+        void TearDown() override {
             std::remove(filename);
         }
-
-    
 };
 
-TEST_F(ScannerTest,TestKeywords){
+TEST_F(ScannerTest, TestKeywords) {
     setInput("var val while if do def then else return true false Int Unit Double import");
 
-    for (int i = 0; i < 14; i++ )
-        EXPECT_EQ(scanner_get_next_token().type,Token_KW);
-    
-    
+    for (int i = 0; i < 14; i++)
+        EXPECT_EQ(scanner_get_next_token().type, Token_KW);
 }
 
-TEST_F(ScannerTest,TestOP){
+TEST_F(ScannerTest, TestOP) {
     setInput("< > <= >= == + - != * / && || ! ");
 
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    EXPECT_EQ(scanner_get_next_token().type,Token_OP);
-    
-
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
+    EXPECT_EQ(scanner_get_next_token().type, Token_OP);
 }
 
-TEST_F(ScannerTest,TestINT)
-{
+TEST_F(ScannerTest, TestINT) {
     setInput("1000 2500 6000 584321 1 0 99999999999999 1_985_452 ");
 
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-    EXPECT_EQ(scanner_get_next_token().type,Token_INT);
-
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
+    EXPECT_EQ(scanner_get_next_token().type, Token_INT);
 }
 
-TEST_F(ScannerTest,TestDouble)
-{
+TEST_F(ScannerTest, TestDouble) {
     setInput("3.14 .5 1e10 3.14d");
 
-    EXPECT_EQ(scanner_get_next_token().type,Token_DOUBLE);
-    EXPECT_EQ(scanner_get_next_token().type,Token_DOUBLE);
-    EXPECT_EQ(scanner_get_next_token().type,Token_DOUBLE);
-    EXPECT_EQ(scanner_get_next_token().type,Token_DOUBLE);
-
+    EXPECT_EQ(scanner_get_next_token().type, Token_DOUBLE);
+    EXPECT_EQ(scanner_get_next_token().type, Token_DOUBLE);
+    EXPECT_EQ(scanner_get_next_token().type, Token_DOUBLE);
+    EXPECT_EQ(scanner_get_next_token().type, Token_DOUBLE);
 }
 
-TEST_F(ScannerTest, TESTID)
-{
+TEST_F(ScannerTest, TESTID) {
     setInput("pos _axis VALUE test_ID x axis_ pos2");
 
-    for(int i = 0; i < 6; i++)
-        EXPECT_EQ(scanner_get_next_token().type,Token_ID);
-
+    for (int i = 0; i < 6; i++)
+        EXPECT_EQ(scanner_get_next_token().type, Token_ID);
 }
 
 TEST_F(ScannerTest, TestStrings) {

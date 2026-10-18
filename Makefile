@@ -21,20 +21,25 @@ DEBUG_CFLAGS = -g
 
 SRC_DIR = src
 SRCS = $(wildcard $(SRC_DIR)/*.c)
+HEADER_FILES = $(wildcard $(SRC_DIR)/*.h)
 TARGET = ifj26
+
 
 TEST_DIR = tests
 TEST_C_SRCS = $(filter-out $(SRC_DIR)/main.c, $(SRCS))
 TEST_OBJS = $(TEST_C_SRCS:.c=.o)
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
 
-.PHONY: build debug clean test
+.PHONY: build debug clean test format
 
 build:
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
 
 debug:
 	$(CC) $(CFLAGS) $(DEBUG_CFLAGS) -o $(TARGET) $(SRCS)
+
+format:
+	clang-format -i $(TEST_SRC) $(SRCS) $(HEADER_FILES)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

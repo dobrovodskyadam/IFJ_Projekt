@@ -1,10 +1,13 @@
 ---
 BasedOnStyle: LLVM
-Language: C
+Language: Cpp
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 100
+
+# C++ Acces Modifiers
+IndentAccessModifiers: false
 
 # Empty lines
 MaxEmptyLinesToKeep: 2
@@ -27,4 +30,3 @@ SpaceBeforeParens: ControlStatements
 AlignConsecutiveMacros: Consecutive
 AlignEscapedNewlines: Left
 IndentPPDirectives: BeforeHash
-

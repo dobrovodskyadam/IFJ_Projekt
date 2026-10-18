@@ -1,27 +1,25 @@
 #ifndef SCANNER_H
 #define SCANNER_H
 
-typedef enum
-{
- Token_KW,
- Token_ID,
- Token_OP,
- Token_INT,
- Token_DOUBLE,
- TOKEN_STRING,
+typedef enum {
+    Token_KW,
+    Token_ID,
+    Token_OP,
+    Token_INT,
+    Token_DOUBLE,
+    TOKEN_STRING,
 
 } TokenType;
 
-typedef struct 
-{
+typedef struct {
     TokenType type;
     union {
         int int_val;
         double double_val;
-        char *str_val; 
+        char *str_val;
     } value;
     /*to do*/
-}Token;
+} Token;
 
 
 #ifdef __cplusplus
