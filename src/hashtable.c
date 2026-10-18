@@ -30,10 +30,10 @@ htab_t htab_init (void){
     return tab;
 }
 
-bool item_add (htab_t tab, char *id, item_type type, bool modif, int id_cnt){
+bool hash_item_add (htab_t tab, char *id, item_type type, bool modif, int id_cnt){
     if(tab == NULL || id == NULL ||
         strlen(id) >= MAX_ITEM_ID || 
-        item_lookup(tab, id) != NULL) return false;
+        hash_item_lookup(tab, id) != NULL) return false;
     
     unsigned hash = hash_func(id);
     int cnt = 0;
@@ -55,7 +55,7 @@ bool item_add (htab_t tab, char *id, item_type type, bool modif, int id_cnt){
     return true;
 }
 
-htab_item_t *item_lookup(htab_t tab, char *id){
+htab_item_t *hash_item_lookup(htab_t tab, char *id){
     htab_item_t *item = NULL;
     unsigned hash = hash_func(id);
     int cnt = 0;
@@ -71,8 +71,8 @@ htab_item_t *item_lookup(htab_t tab, char *id){
     return item;
 }
 
-void item_del (htab_t tab, char *id){
-    htab_item_t* item = item_lookup(tab, id);
+void hash_item_del (htab_t tab, char *id){
+    htab_item_t* item = hash_item_lookup(tab, id);
     if(item != NULL && item->used == USE)
         item->used = DEL;
 }

@@ -4,15 +4,15 @@
 #include "symtable.h"
 #include "hashtable.h"
 
-struct symtab_item{
+typedef struct symtab_item{
     htab_t scope;
     struct symtab_item *next;
-};
+} symtab_item_t;
 
-typedef struct symtab{
+struct symtab{
     symtab_item_t *top;
     unsigned int id_cnt;
-} symtab_t;
+};
 
 symtab_t *symtab_init (void){
     symtab_t *stab = (symtab_t *) malloc(sizeof(symtab_t));
@@ -47,6 +47,31 @@ void scope_rm (symtab_t *stab){
         free(stab->top);
         stab->top = tmp;
     }
+}
+
+bool item_add (symtab_t *stab, char *id, item_type type, bool modif){
+    if(stab == NULL) return false;
+
+    if(hash_item_add(stab->top->scope, id, type, modif, stab->id_cnt) == false)
+        return false;
+    return true;
+}
+
+bool item_lookup (symtab_t *stab, char *id){
+    if(stab == NULL) return false;
+
+    symtab_item_t *item = stab->top;
+    while(item != NULL){
+        if(hash_item_lookup(item->scope, id) != NULL) return true;
+        item = item->next;
+    }
+    return false;
+}
+
+void item_del (symtab_t *stab, char *id){
+    if(stab == NULL) return false;
+
+    hash_item_del(stab->top->scope, id);
 }
 
 void symtab_dtor (symtab_t *stab){

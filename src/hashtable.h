@@ -28,9 +28,9 @@ unsigned hash_func (const char *id);
 
 htab_t htab_init (void);
 
-bool item_add (htab_t tab, char *id, item_type type, bool modif, int id_cnt);
-htab_item_t *item_lookup (htab_t tab, char *id);
-void item_del (htab_t tab, char *id);
+bool hash_item_add (htab_t tab, char *id, item_type type, bool modif, int id_cnt);
+htab_item_t *hash_item_lookup (htab_t tab, char *id);
+void hash_item_del (htab_t tab, char *id);
 
 
 void htab_dtor (htab_t tab);
