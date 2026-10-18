@@ -19,13 +19,7 @@ typedef enum {
     DEL
 } item_used;
 
-typedef struct htab_item{
-    char id[MAX_ITEM_ID];
-    item_type type;
-    bool modif;
-    unsigned id_cnt;
-    item_used used;
-} htab_item_t;
+typedef struct htab_item htab_item_t;
 
 typedef htab_item_t *htab_t;
 

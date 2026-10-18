@@ -4,6 +4,14 @@
 
 #include "hashtable.h"
 
+struct htab_item{
+    char id[MAX_ITEM_ID];
+    item_type type;
+    bool modif;
+    unsigned id_cnt;
+    item_used used;
+};
+
 unsigned hash_func (const char *id){
     unsigned hash = 0;
     size_t len = strlen(id);
@@ -16,7 +24,7 @@ unsigned hash_func (const char *id){
 htab_t htab_init (void){
     htab_t tab = (htab_t)calloc(MAX_HTAB_ITEMS, sizeof(htab_item_t));
     if(tab == NULL){
-        fprintf(stderr, "Memory allocation failed\n");
+        fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
     return tab;
