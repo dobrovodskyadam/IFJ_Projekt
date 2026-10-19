@@ -101,7 +101,7 @@ void scope_rm (symtab_t *stab){
 /// @param modif 1 == modifiable, 0 == not
 /// @return True for successfully added item
 bool item_add (symtab_t *stab, char *id, item_type type, bool modif){
-    if(stab == NULL) return false;
+    if(stab == NULL || stab->top == NULL) return false;
 
     if(hash_item_add(stab->top->scope, id, type, modif, stab->id_cnt) == false)
         return false;
