@@ -12,6 +12,15 @@ typedef struct symtab_item{
 struct symtab{
     symtab_item_t *top;
     unsigned int id_cnt;
+    int depth;
+};
+
+struct htab_item{
+    char id[MAX_ITEM_ID];
+    item_type type;
+    bool modif;
+    unsigned id_cnt;
+    item_used used;
 };
 
 symtab_t *symtab_init (void){
@@ -23,6 +32,7 @@ symtab_t *symtab_init (void){
 
     stab->top = NULL;
     stab->id_cnt = 0;
+    stab->depth = -1;
     return stab;
 }
 
@@ -36,6 +46,7 @@ void scope_add (symtab_t *stab){
     scope_new->scope = tab;
     scope_new->next = stab->top;
     stab->top = scope_new;
+    stab->depth++;
 }
 
 void scope_rm (symtab_t *stab){
@@ -46,6 +57,7 @@ void scope_rm (symtab_t *stab){
         htab_dtor(stab->top->scope);
         free(stab->top);
         stab->top = tmp;
+        stab->depth--;
     }
 }
 
@@ -54,6 +66,8 @@ bool item_add (symtab_t *stab, char *id, item_type type, bool modif){
 
     if(hash_item_add(stab->top->scope, id, type, modif, stab->id_cnt) == false)
         return false;
+
+    stab->id_cnt ++;
     return true;
 }
 
@@ -69,9 +83,28 @@ bool item_lookup (symtab_t *stab, char *id){
 }
 
 void item_del (symtab_t *stab, char *id){
-    if(stab == NULL) return false;
+    if(stab == NULL) return;
 
     hash_item_del(stab->top->scope, id);
+}
+
+item_t get_item(symtab_t *stab, char *id){
+    item_t item = {-1, VAR, false};
+    htab_item_t *hash_item;
+    if(item_lookup(stab, id) == false) {
+        return item;
+    }
+
+    symtab_item_t *scope = stab->top;
+    item.scope = stab->depth;
+    while((hash_item = hash_item_lookup(scope->scope, id)) == NULL){
+        item.scope --;
+        scope = scope->next;
+    }
+    
+    item.type = hash_item->type;
+    item.modif = hash_item->modif;
+    return item;
 }
 
 void symtab_dtor (symtab_t *stab){
