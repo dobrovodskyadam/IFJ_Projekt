@@ -1,3 +1,12 @@
+/// @file symtable.h
+/// @brief Header file for module symtable.c, table of symbols.
+///        Structures themselves are encapsuled and are interacted with only through functions.
+/// @date 19-10-2026
+///
+/// @author Tomas Gruber (xgrubet01)
+/// @author Email: xgrubet01@stud.fit.vut.cz
+/// Faculty of Information Technology, Brno University of Technology
+
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
 
@@ -8,9 +17,14 @@ typedef struct symtab_item symtab_item_t;
 
 typedef struct symtab symtab_t;
 
+/// @brief Structure to recieve values for get_item
+/// @param scope Absolute scope value, -1 == Search failed, 
+///              0 == Global scope, 1 == First scope above global, ...
+/// @param type viz enum{...} item_type in hashtable.h
+/// @param modif True == modifiable, False == constant
 typedef struct item{
     int scope;
-    item_type type;
+    item_type type; 
     bool modif;
 }item_t;
 
