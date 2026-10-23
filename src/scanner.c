@@ -735,6 +735,7 @@ void getToken (Token *token, ScannerData *scanner) {
                         state = STATE_COMMENT;
                     } else if (next_c == '*') {
                         space_count = 0;
+                        comment_nesting++;
                         state = STATE_COMMENT_NESTING;
                     } else {
                         token->type = TOKEN_ERROR;
