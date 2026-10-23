@@ -15,8 +15,6 @@ typedef enum
  TOKEN_FOR,
  TOKEN_AND,
  TOKEN_OR,
- TOKEN_TRUE,
- TOKEN_FALSE,
  TOKEN_EQ,
  TOKEN_GR_EQ,
  TOKEN_LS_EQ,
@@ -28,10 +26,6 @@ typedef enum
  TOKEN_NEQ,
  TOKEN_LPAREN,
  TOKEN_RPAREN,
- TOKEN_LBRACKET,
- TOKEN_RBRACKET,
- TOKEN_LBRACE,
- TOKEN_RBRACE,
  TOKEN_ASSIGN,
  TOKEN_NOT,
  TOKEN_ERROR,
@@ -67,7 +61,6 @@ typedef struct
         double double_val;
         char *str_val; 
     } value;
-    /*to do*/
 }Token;
 
 typedef struct
@@ -91,7 +84,6 @@ typedef struct
 extern "C" {
 #endif
 
-Token scanner_get_next_token(void);
 void initScannerData (ScannerData *scanner);
 void getToken(Token *token, ScannerData *scanner);
 
