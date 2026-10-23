@@ -58,5 +58,14 @@ dkms.conf
 # Zed specific files
 .zed/
 
+# Scala config
+.bsp/
+
+# Examples from Elearning
+examples/
+
+# Given test interpret
+ic26int-linux-x86_64
+
 # test file
 run_tests

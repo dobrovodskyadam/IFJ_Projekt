@@ -53,13 +53,12 @@ typedef enum
  TOKEN_MAIN
 } TokenType;
 
-typedef struct 
-{
+typedef struct {
     TokenType type;
     union {
         int int_val;
         double double_val;
-        char *str_val; 
+        char *str_val;
     } value;
 }Token;
 
