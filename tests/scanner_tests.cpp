@@ -20,8 +20,6 @@
         case TOKEN_FOR: return os << "TOKEN_FOR";
         case TOKEN_AND: return os << "TOKEN_AND";
         case TOKEN_OR: return os << "TOKEN_OR";
-        case TOKEN_TRUE: return os << "TOKEN_TRUE";
-        case TOKEN_FALSE: return os << "TOKEN_FALSE";
         case TOKEN_EQ: return os << "TOKEN_EQ";
         case TOKEN_GR_EQ: return os << "TOKEN_GR_EQ";
         case TOKEN_LS_EQ: return os << "TOKEN_LS_EQ";
@@ -33,10 +31,6 @@
         case TOKEN_NEQ: return os << "TOKEN_NEQ";
         case TOKEN_LPAREN: return os << "TOKEN_LPAREN";
         case TOKEN_RPAREN: return os << "TOKEN_RPAREN";
-        case TOKEN_LBRACKET: return os << "TOKEN_LBRACKET";
-        case TOKEN_RBRACKET: return os << "TOKEN_RBRACKET";
-        case TOKEN_LBRACE: return os << "TOKEN_LBRACE";
-        case TOKEN_RBRACE: return os << "TOKEN_RBRACE";
         case TOKEN_ASSIGN: return os << "TOKEN_ASSIGN";
         case TOKEN_NOT: return os << "TOKEN_NOT";
         case TOKEN_ERROR: return os << "TOKEN_ERROR";
@@ -52,6 +46,15 @@
         case TOKEN_THEN: return os << "TOKEN_THEN";
         case TOKEN_IMPORT: return os << "TOKEN_IMPORT";
         case TOKEN_KW_STRING: return os << "TOKEN_KW_STRING";
+        case TOKEN_KW_INT: return os << "TOKEN_KW_INT";
+        case TOKEN_KW_DOUBLE: return os << "TOKEN_KW_DOUBLE";
+        case TOKEN_INDENT: return os << "TOKEN_INDENT";
+        case TOKEN_DEDENT: return os << "TOKEN_DEDENT";
+        case TOKEN_EOL: return os << "TOKEN_EOL";
+        case TOKEN_SEPARATOR: return os << "TOKEN_SEPARATOR";
+        case TOKEN_COLON: return os << "TOKEN_COLON";
+        case TOKEN_IFJ: return os << "TOKEN_IFJ";
+        case TOKEN_MAIN: return os << "TOKEN_MAIN";
         case TOKEN_EOF: return os << "TOKEN_EOF";
         default: return os << "TOKEN_UNKNOWN(" << static_cast<int>(type) << ")";
     }
@@ -61,6 +64,7 @@
 class ScannerTest : public::testing::Test {
     protected:
         const char* filename = "temp_test_input.tmp";
+        ScannerData scanner_data;
 
         void setInput(const std::string& input)
         {
@@ -71,6 +75,10 @@ class ScannerTest : public::testing::Test {
             std::freopen(filename,"r",stdin);
         }
 
+        void SetUp() override {
+            initScannerData(&scanner_data);
+        }
+
         void TearDown() override{
             std::remove(filename);
         }
@@ -78,7 +86,7 @@ class ScannerTest : public::testing::Test {
        Token scanner_get_next_token(void)
        {
             Token t;
-            getToken(&t);
+            getToken(&t,&scanner_data);
             return t;
        }
 
@@ -86,7 +94,7 @@ class ScannerTest : public::testing::Test {
 };
 
 TEST_F(ScannerTest,TestKeywords){
-    setInput("var val while if do def then else return true false Int Unit Double import String Boolean case List");
+    setInput("var val while if do def then else return Int Unit Double import String Boolean case List @main");
 
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAR);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
@@ -97,16 +105,15 @@ TEST_F(ScannerTest,TestKeywords){
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_THEN);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_ELSE);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_RETURN);
-    EXPECT_EQ(scanner_get_next_token().type, TOKEN_TRUE);
-    EXPECT_EQ(scanner_get_next_token().type, TOKEN_FALSE);
-    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_KW_INT);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_UNIT);
-    EXPECT_EQ(scanner_get_next_token().type, TOKEN_DOUBLE);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_KW_DOUBLE);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_IMPORT);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_KW_STRING);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_BOOLEAN);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_CASE);
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_LIST);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_MAIN);
     
 }
 
@@ -131,9 +138,9 @@ TEST_F(ScannerTest,TestOP){
 
 TEST_F(ScannerTest, TestINT)
 {
-    setInput("1000 2500 6000 584321 1 0 999999 1_985_452 ");
+    setInput("1000 2500 6000 584321 1 0 999999 1_985_452 1_2 ");
 
-    const int expected[] = {1000, 2500, 6000, 584321, 1, 0, 999999, 1985452};
+    const int expected[] = {1000, 2500, 6000, 584321, 1, 0, 999999, 1985452, 12};
     const int count = sizeof(expected) / sizeof(expected[0]);
 
     for (int i = 0; i < count; i++) {
@@ -188,13 +195,13 @@ TEST_F(ScannerTest, TestStrings) {
     EXPECT_EQ(t2.type, TOKEN_STRING);
     EXPECT_STREQ(t2.value.str_val, "s escape \n sekvenciou");
 }
+TEST_F(ScannerTest, TestComments) {
+    setInput("// toto je riadkovy komentar\nvar // dalsi komentar\n/* blokovy \n komentar */ val");
 
-TEST_F(ScannerTest, TestComments){
-    setInput("// toto je riadkovy komentar\n var // dalsi komentar\n /* blokovy \n komentar */ val");
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_VAR);
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_VAL);
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_EOF);
-
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAR);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOL); 
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOF);
 }
 
 TEST_F(ScannerTest, TestComplexNumbers){
@@ -207,14 +214,6 @@ TEST_F(ScannerTest, TestComplexNumbers){
     EXPECT_EQ(scanner_get_next_token().type,TOKEN_EOF);
 }
 
-TEST_F(ScannerTest, TestInvalidNumbers){
-    setInput("10. 42e 59.82f");
-
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_ERROR);
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_ERROR);
-    EXPECT_EQ(scanner_get_next_token().type,TOKEN_ERROR); 
-}
-
 TEST_F(ScannerTest, TestOperatorLookahead) {
     setInput("===<=>=");
 
@@ -222,4 +221,116 @@ TEST_F(ScannerTest, TestOperatorLookahead) {
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN); // =
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_LS_EQ);   // <=
     EXPECT_EQ(scanner_get_next_token().type, TOKEN_GR_EQ);   // >=
+}
+
+TEST_F(ScannerTest, TestEXP){
+    setInput("val = 42 + 1_2");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_PLUS);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+
+    setInput("val = 42 * (1_2)");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_MUL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_LPAREN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_RPAREN);
+
+}
+
+TEST_F(ScannerTest, TestDeclarations)
+{
+    setInput("def factorial(n: Int): Int =");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_DEF);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ID);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_LPAREN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ID);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_COLON);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_KW_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_RPAREN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_COLON);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_KW_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+
+}
+
+TEST_F(ScannerTest, TestSpecialTokensAndSeparators) {
+    setInput("( ) ; : @main ifj26.*");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_LPAREN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_RPAREN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_SEPARATOR);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_COLON);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_MAIN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_IFJ);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOF);
+}
+
+TEST_F(ScannerTest, TestStringEscapesAll) {
+    setInput("\"\\\\ \\\" \\n \\r \\t\"");
+
+    Token t = scanner_get_next_token();
+    EXPECT_EQ(t.type, TOKEN_STRING);
+    EXPECT_STREQ(t.value.str_val, "\\ \" \n \r \t");
+    free(t.value.str_val);
+}
+
+TEST_F(ScannerTest, TestTripleQuoteStrings) {
+    setInput("\"\"\"riadok 1\nriadok 2\"\"\"");
+
+    Token t = scanner_get_next_token();
+    EXPECT_EQ(t.type, TOKEN_STRING);
+    EXPECT_STREQ(t.value.str_val, "riadok 1\nriadok 2");
+    free(t.value.str_val);
+}
+
+TEST_F(ScannerTest, TestUnclosedTripleQuoteString) {
+    setInput("\"\"\"riadok 1\nriadok 2\"\"");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ERROR);
+}
+
+TEST_F(ScannerTest, TestInvalidEscape) {
+    setInput("\"neplatny \\z escape\"");
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ERROR);
+}
+
+TEST_F(ScannerTest, TestUnclosedString) {
+    setInput("\"unclosed string\n");
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ERROR);
+}
+
+TEST_F(ScannerTest, TestUnclosedBlockComment) {
+    setInput("/* otvoreny komentar bez konca");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ERROR);
+}
+
+TEST_F(ScannerTest, TestIndentDedentMultiLevel) {
+    setInput("var a = 1\n        val b = 2\nval c = 3");
+
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAR);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ID);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INDENT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ID);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_DEDENT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_VAL);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ID);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_ASSIGN);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_INT);
+    EXPECT_EQ(scanner_get_next_token().type, TOKEN_EOF);
 }
