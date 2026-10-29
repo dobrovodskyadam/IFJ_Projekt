@@ -186,6 +186,15 @@ void getToken(Token *token, ScannerData *scanner) {
             } else if (c == ':') {
                 token->type = TOKEN_COLON;
                 token_found = 1;
+            } else if (c == ',') {
+                token->type = TOKEN_COMMA;
+                token_found = 1;
+            } else if (c == '[') {
+                token->type = TOKEN_LBRACKET;
+                token_found = 1;
+            } else if (c == ']') {
+                token->type = TOKEN_RBRACKET;
+                token_found = 1;
             } else if (c == '@') {
                 state = STATE_WORD;
                 if (!addChar(&token_buffer, c)) {
@@ -407,6 +416,10 @@ void getToken(Token *token, ScannerData *scanner) {
                             token->type = TOKEN_FOR;
                         } else if (strcmp(token_buffer.str, "List") == 0) {
                             token->type = TOKEN_LIST;
+                        } else if (strcmp(token_buffer.str, "true") == 0) {
+                            token->type = TOKEN_TRUE;
+                        } else if (strcmp(token_buffer.str, "false") == 0) {
+                            token->type = TOKEN_FALSE;
                         } else {
                             token->type = TOKEN_ID;
                             token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
@@ -541,6 +554,8 @@ void getToken(Token *token, ScannerData *scanner) {
                 state = STATE_ESCAPE;
             } else if (isascii(c) && c != '\n') {
                 state = STATE_STR;
+
+
                 if (!addChar(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
                 }
@@ -831,4 +846,68 @@ void getToken(Token *token, ScannerData *scanner) {
         }
     }
     freeTokenString(&token_buffer);
+}
+
+
+// Helper Static Array
+static const char *token_names[TOKEN_COUNT] = {[TOKEN_ID] = "TOKEN_ID",
+                                               [TOKEN_INT] = "TOKEN_INT",
+                                               [TOKEN_DOUBLE] = "TOKEN_DOUBLE",
+                                               [TOKEN_STRING] = "TOKEN_STRING",
+                                               [TOKEN_PLUS] = "TOKEN_PLUS",
+                                               [TOKEN_MINUS] = "TOKEN_MINUS",
+                                               [TOKEN_IF] = "TOKEN_IF",
+                                               [TOKEN_ELSE] = "TOKEN_ELSE",
+                                               [TOKEN_WHILE] = "TOKEN_WHILE",
+                                               [TOKEN_FOR] = "TOKEN_FOR",
+                                               [TOKEN_AND] = "TOKEN_AND",
+                                               [TOKEN_OR] = "TOKEN_OR",
+                                               [TOKEN_EQ] = "TOKEN_EQ",
+                                               [TOKEN_GR_EQ] = "TOKEN_GR_EQ",
+                                               [TOKEN_LS_EQ] = "TOKEN_LS_EQ",
+                                               [TOKEN_LS] = "TOKEN_LS",
+                                               [TOKEN_GR] = "TOKEN_GR",
+                                               [TOKEN_DEF] = "TOKEN_DEF",
+                                               [TOKEN_MUL] = "TOKEN_MUL",
+                                               [TOKEN_DIV] = "TOKEN_DIV",
+                                               [TOKEN_NEQ] = "TOKEN_NEQ",
+                                               [TOKEN_LPAREN] = "TOKEN_LPAREN",
+                                               [TOKEN_RPAREN] = "TOKEN_RPAREN",
+                                               [TOKEN_ASSIGN] = "TOKEN_ASSIGN",
+                                               [TOKEN_NOT] = "TOKEN_NOT",
+                                               [TOKEN_ERROR] = "TOKEN_ERROR",
+                                               [TOKEN_ERROR_MEMORY] = "TOKEN_ERROR_MEMORY",
+                                               [TOKEN_VAR] = "TOKEN_VAR",
+                                               [TOKEN_VAL] = "TOKEN_VAL",
+                                               [TOKEN_RETURN] = "TOKEN_RETURN",
+                                               [TOKEN_UNIT] = "TOKEN_UNIT",
+                                               [TOKEN_BOOLEAN] = "TOKEN_BOOLEAN",
+                                               [TOKEN_CASE] = "TOKEN_CASE",
+                                               [TOKEN_LIST] = "TOKEN_LIST",
+                                               [TOKEN_DO] = "TOKEN_DO",
+                                               [TOKEN_THEN] = "TOKEN_THEN",
+                                               [TOKEN_IMPORT] = "TOKEN_IMPORT",
+                                               [TOKEN_KW_STRING] = "TOKEN_KW_STRING",
+                                               [TOKEN_KW_INT] = "TOKEN_KW_INT",
+                                               [TOKEN_KW_DOUBLE] = "TOKEN_KW_DOUBLE",
+                                               [TOKEN_EOF] = "TOKEN_EOF",
+                                               [TOKEN_INDENT] = "TOKEN_INDENT",
+                                               [TOKEN_DEDENT] = "TOKEN_DEDENT",
+                                               [TOKEN_EOL] = "TOKEN_EOL",
+                                               [TOKEN_SEPARATOR] = "TOKEN_SEPARATOR",
+                                               [TOKEN_COLON] = "TOKEN_COLON",
+                                               [TOKEN_IFJ] = "TOKEN_IFJ",
+                                               [TOKEN_MAIN] = "TOKEN_MAIN",
+                                               [TOKEN_COMMA] = "TOKEN_COMMA",
+                                               [TOKEN_TRUE] = "TOKEN_TRUE",
+                                               [TOKEN_FALSE] = "TOKEN_FALSE",
+                                               [TOKEN_LBRACKET] = "TOKEN_LBRACKET",
+                                               [TOKEN_RBRACKET] = "TOKEN_RBRACKET"};
+
+// Function for getting the TokenName from the TokenType
+const char *tokenTypeName(TokenType type) {
+    if (type < 0 || type >= TOKEN_COUNT) {
+        return "UNKNOWN";
+    }
+    return token_names[type];
 }

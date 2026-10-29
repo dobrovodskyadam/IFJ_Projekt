@@ -49,7 +49,13 @@ typedef enum {
     TOKEN_SEPARATOR,
     TOKEN_COLON,
     TOKEN_IFJ,
-    TOKEN_MAIN
+    TOKEN_MAIN,
+    TOKEN_COMMA,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
+    TOKEN_LBRACKET,
+    TOKEN_RBRACKET,
+    TOKEN_COUNT // Number of token types, keep last
 } TokenType;
 
 typedef struct {
@@ -81,6 +87,7 @@ extern "C" {
 
 void initScannerData(ScannerData *scanner);
 void getToken(Token *token, ScannerData *scanner);
+const char *tokenTypeName(TokenType type);
 
 #ifdef __cplusplus
 }

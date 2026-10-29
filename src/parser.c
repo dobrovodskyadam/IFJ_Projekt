@@ -13,14 +13,21 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+
 int main(void) {
 
     ScannerData sc;
     Token tok;
 
+
+    // TODO
+    // First(X)
+    // Follow(X)
+    // Implementace LL(1) gramatiky
+
     initScannerData(&sc);
     do {
         getToken(&tok, &sc);
-        printf("%i\n", tok.type);
+        printf("%s\n", tokenTypeName(tok.type));
     } while (tok.type != TOKEN_EOF);
 }

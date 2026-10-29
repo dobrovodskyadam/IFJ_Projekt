@@ -36,6 +36,7 @@
 *.x86_64
 *.hex
 ifj26
+ic26int-linux-x86_64
 
 # Debug files
 *.dSYM/
@@ -57,15 +58,14 @@ dkms.conf
 
 # Zed specific files
 .zed/
+.metals/
 
-# Scala config
+# Scala configuration
 .bsp/
+.scalafmt.conf
 
 # Examples from Elearning
 examples/
-
-# Given test interpret
-ic26int-linux-x86_64
 
 # test file
 run_tests

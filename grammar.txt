@@ -1,0 +1,34 @@
+<start> -> TOKEN_IMPORT TOKEN_IFJ TOKEN_EOL <list-def> TOKEN_EOF
+<list-def> -> <def> <list-def>
+<list-def> -> ε
+<def> -> <opt-main> TOKEN_DEF TOKEN_ID TOKEN_LPAREN <list-args> TOKEN_RPAREN <opt-return> TOKEN_ASSIGN <function-body>
+<opt-main> -> TOKEN_MAIN <opt-main-space>
+<opt-main> -> ε
+<opt-main-space> -> TOKEN_EOL
+<opt-main-space> -> ε
+<opt-return> -> TOKEN_COLON <type>
+<opt-return> -> ε
+<type> -> TOKEN_UNIT
+<type> -> TOKEN_KW_INT
+<type> -> TOKEN_BOOLEAN
+<type> -> TOKEN_KW_DOUBLE
+<type> -> TOKEN_KW_STRING
+<list-args> -> <arg> <more-list-args>
+<list-args> -> ε
+<more-list-args> -> TOKEN_COMMA <arg> <more-list-args>
+<more-list-args> -> ε
+<arg> -> TOKEN_ID TOKEN_COLON <type>
+<function-body> -> <expression> TOKEN_EOL
+<function-body> -> TOKEN_EOL <block>
+<expression> -> #TODO
+<block> -> TOKEN_INDENT <statement-list> TOKEN_DEDENT
+<statement-list> -> <statement> <statement-list-rest>
+<statement-list-rest> -> <statement> <statement-list-rest>
+<statement-list-rest> -> ε
+
+#TODO - add support for FUNEXP, CONTROL
+<statement> -> <var-declaration>
+<statement> -> <val-declaration>
+<statement> -> <assignment>
+<statement> -> <expression>
+<statement> -> <return>
