@@ -1,34 +1,94 @@
+// @file grammar.txt
+// @brief
+// @date 29-10-2026
+//
+// @author Lukas Sofka (xsofkal00)
+// @author Email: xsofkal00@stud.fit.vutbr.cz
+// Faculty of Information Technology, Brno University of Technology
+
+
+# Program structure
 <start> -> TOKEN_IMPORT TOKEN_IFJ TOKEN_EOL <list-def> TOKEN_EOF
 <list-def> -> <def> <list-def>
 <list-def> -> ε
-<def> -> <opt-main> TOKEN_DEF TOKEN_ID TOKEN_LPAREN <list-args> TOKEN_RPAREN <opt-return> TOKEN_ASSIGN <function-body>
+
+# Function definition
+<def> -> <opt-main> TOKEN_DEF TOKEN_ID TOKEN_LPAREN <list-params> TOKEN_RPAREN <opt-type> TOKEN_ASSIGN <function-body>
 <opt-main> -> TOKEN_MAIN <opt-main-space>
 <opt-main> -> ε
 <opt-main-space> -> TOKEN_EOL
 <opt-main-space> -> ε
-<opt-return> -> TOKEN_COLON <type>
-<opt-return> -> ε
+
+# Parameters
+<list-params> -> <parameter> <more-list-params>
+<list-params> -> ε
+<more-list-params> -> TOKEN_COMMA <parameter> <more-list-params>
+<more-list-params> -> ε
+<parameter> -> TOKEN_ID TOKEN_COLON <type>
+
+# Function body
+<function-body> -> <expression> TOKEN_EOL
+<function-body> -> TOKEN_EOL <block>
+
+# Types
 <type> -> TOKEN_UNIT
 <type> -> TOKEN_KW_INT
 <type> -> TOKEN_BOOLEAN
 <type> -> TOKEN_KW_DOUBLE
 <type> -> TOKEN_KW_STRING
-<list-args> -> <arg> <more-list-args>
-<list-args> -> ε
-<more-list-args> -> TOKEN_COMMA <arg> <more-list-args>
-<more-list-args> -> ε
-<arg> -> TOKEN_ID TOKEN_COLON <type>
-<function-body> -> <expression> TOKEN_EOL
-<function-body> -> TOKEN_EOL <block>
-<expression> -> #TODO
+<opt-type> -> TOKEN_COLON <type>
+<opt-type> -> ε
+
+# Blocks
 <block> -> TOKEN_INDENT <statement-list> TOKEN_DEDENT
 <statement-list> -> <statement> <statement-list-rest>
 <statement-list-rest> -> <statement> <statement-list-rest>
 <statement-list-rest> -> ε
 
-#TODO - add support for FUNEXP, CONTROL
-<statement> -> <var-declaration>
-<statement> -> <val-declaration>
-<statement> -> <assignment>
-<statement> -> <expression>
-<statement> -> <return>
+# Statements
+#TODO - add support for CONTROL
+<statement> -> <variable-declaration> <statement-end>
+<statement> -> <assignment> <statement-end>
+<statement> -> <expression> <statement-end>
+<statement> -> <return> <statement-end>
+<statement> -> <if-statement>
+<statement> -> <while-statement>
+<statement-end> -> TOKEN_EOL
+<statement-end> -> TOKEN_SEPARATOR
+
+# Var/Val Declaration
+<variable-declaration> -> <var-or-val> TOKEN_ID <opt-type> TOKEN_ASSIGN <expression>
+<var-or-val> -> TOKEN_VAL
+<var-or-val> -> TOKEN_VAR
+
+# Assignment
+<assignment> -> TOKEN_ID TOKEN_ASSIGN <expression>
+
+# Return
+<return> -> TOKEN_RETURN <return-argument>
+<return-argument> -> ε
+<return-argument> -> <expression>
+
+# While
+<while-statement> -> TOKEN_WHILE <expression> TOKEN_DO TOKEN_EOL <block>
+
+# If
+<if-statement> -> TOKEN_IF <expression> TOKEN_THEN TOKEN_EOL <block> <else-part>
+<else-part> -> TOKEN_ELSE <after-else-part>
+<else-part> -> ε
+<after-else-part> -> <if-statement>
+<after-else-part> -> TOKEN_EOL <block>
+
+
+# Expressions
+# Expressions will be parsed else where
+
+# Function Call
+<function-call> -> TOKEN_ID TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
+
+# Function Arguments
+<list-arguments> -> <argument> <more-list-arguments>
+<list-arguments> -> ε
+<more-list-arguments> -> TOKEN_COMMA <argument> <more-list-arguments>
+<more-list-arguments> -> ε
+<argument> -> <expression>
