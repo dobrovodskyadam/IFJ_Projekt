@@ -1,5 +1,5 @@
 # @file grammar.txt
-# @brief IFJ26 grammar  
+# @brief IFJ26 grammar
 # @date 29-10-2026
 #
 # @author Lukas Sofka (xsofkal00)
@@ -94,7 +94,7 @@
 <opt-by> -> #BY <expression>
 
 
-#TODO List support 
+# TODO List support
 
 # If Statement
 # Used as normal if statement (with optional else if and else)
