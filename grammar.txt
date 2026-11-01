@@ -1,10 +1,10 @@
-// @file grammar.txt
-// @brief
-// @date 29-10-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+# @file grammar.txt
+# @brief IFJ26 grammar  
+# @date 29-10-2026
+#
+# @author Lukas Sofka (xsofkal00)
+# @author Email: xsofkal00@stud.fit.vutbr.cz
+# Faculty of Information Technology, Brno University of Technology
 
 
 # Program structure
@@ -72,9 +72,29 @@
 <return-argument> -> <statement-end>
 <return-argument> -> <value-or-expr>
 
-# While
+# While cycle
 <while-statement> -> TOKEN_WHILE <expression> TOKEN_DO TOKEN_EOL <block>
 
+# For cycle
+<for-statement> -> TOKEN_FOR <for-header> TOKEN_DO TOKEN_EOL <block>
+<for-header> -> <generator>
+<for-header> -> TOKEN_EOL TOKEN_INDENT <generator> TOKEN_EOL <list-guards> TOKEN_DEDENT
+
+<list-guards> -> ε
+<list-guards> -> <guard> TOKEN_EOL <list-guards>
+
+<guard> -> TOKEN_IF <expression>
+<generator> -> TOKEN_ID TOKEN_LARROW <expression> <range>
+
+<range> -> ε
+<range> -> #TO <expression> <opt-by>
+<range> -> #UNTIL <expression>
+
+<opt-by> -> ε
+<opt-by> -> #BY <expression>
+
+
+#TODO List support 
 
 # If Statement
 # Used as normal if statement (with optional else if and else)
