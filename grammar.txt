@@ -27,7 +27,7 @@
 <parameter> -> TOKEN_ID TOKEN_COLON <type>
 
 # Function body
-<function-body> -> <expression> TOKEN_EOL
+<function-body> -> <if-or-expr>
 <function-body> -> TOKEN_EOL <block>
 
 # Types
@@ -46,38 +46,66 @@
 <statement-list-rest> -> ε
 
 # Statements
-#TODO - add support for CONTROL
-<statement> -> <variable-declaration> <statement-end>
-<statement> -> <assignment> <statement-end>
-<statement> -> <expression> <statement-end>
-<statement> -> <return> <statement-end>
-<statement> -> <if-statement>
+<statement> -> <variable-declaration>
+<statement> -> <assignment>
+<statement> -> <return>
 <statement> -> <while-statement>
+<statement> -> <if-statement>
+<statement> -> <expression> <statement-end>
 <statement-end> -> TOKEN_EOL
 <statement-end> -> TOKEN_SEPARATOR
+<if-or-expr> -> <expression> <statement-end>
+<if-or-expr> -> <if-statement>
+<value-or-expr> -> <expression> <statement-end>
+<value-or-expr> -> <if-value>
 
 # Var/Val Declaration
-<variable-declaration> -> <var-or-val> TOKEN_ID <opt-type> TOKEN_ASSIGN <expression>
+<variable-declaration> -> <var-or-val> TOKEN_ID <opt-type> TOKEN_ASSIGN <value-or-expr>
 <var-or-val> -> TOKEN_VAL
 <var-or-val> -> TOKEN_VAR
 
 # Assignment
-<assignment> -> TOKEN_ID TOKEN_ASSIGN <expression>
+<assignment> -> TOKEN_ID TOKEN_ASSIGN <value-or-expr>
 
 # Return
 <return> -> TOKEN_RETURN <return-argument>
-<return-argument> -> ε
-<return-argument> -> <expression>
+<return-argument> -> <statement-end>
+<return-argument> -> <value-or-expr>
 
 # While
 <while-statement> -> TOKEN_WHILE <expression> TOKEN_DO TOKEN_EOL <block>
 
-# If
-<if-statement> -> TOKEN_IF <expression> TOKEN_THEN TOKEN_EOL <block> <else-part>
-<else-part> -> TOKEN_ELSE <after-else-part>
-<else-part> -> ε
-<after-else-part> -> <if-statement>
-<after-else-part> -> TOKEN_EOL <block>
+
+# If Statement
+# Used as normal if statement (with optional else if and else)
+<if-statement> -> TOKEN_IF <expression> TOKEN_THEN <st-then-part>
+
+<st-then-part> -> TOKEN_EOL <block> <st-opt-else>
+<st-then-part> -> <expression> <st-after-inline-part>
+
+<st-else-part> -> TOKEN_EOL <block>
+<st-else-part> -> <expression> <statement-end>
+<st-else-part> -> <if-statement>
+
+<st-opt-else> -> TOKEN_ELSE <st-else-part>
+<st-opt-else> -> ε
+
+<st-after-inline-part> -> TOKEN_ELSE <st-else-part>
+<st-after-inline-part> -> TOKEN_EOL <st-opt-else>
+
+
+# If Value
+# Used in var x = if y > 0 then 1 else 2
+<if-value> -> TOKEN_IF <expression> TOKEN_THEN <value-then-part>
+
+<value-then-part> -> TOKEN_EOL <block> TOKEN_ELSE <value-else-part>
+<value-then-part> -> <expression> <value-after-inline-part>
+
+<value-after-inline-part> -> TOKEN_ELSE <value-else-part>
+<value-after-inline-part> -> TOKEN_EOL TOKEN_ELSE <value-else-part>
+
+<value-else-part> -> <expression> <statement-end>
+<value-else-part> -> TOKEN_EOL <block>
 
 
 # Expressions
