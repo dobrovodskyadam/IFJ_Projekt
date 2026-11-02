@@ -50,6 +50,7 @@
 <statement> -> <assignment>
 <statement> -> <return>
 <statement> -> <while-statement>
+<statement> -> <for-statement>
 <statement> -> <if-statement>
 <statement> -> <expression> <statement-end>
 <statement-end> -> TOKEN_EOL
@@ -112,7 +113,7 @@
 
 <st-after-inline-part> -> TOKEN_ELSE <st-else-part>
 <st-after-inline-part> -> TOKEN_EOL <st-opt-else>
-
+<st-after-inline-part> -> TOKEN_SEPARATOR
 
 # If Value
 # Used in var x = if y > 0 then 1 else 2
