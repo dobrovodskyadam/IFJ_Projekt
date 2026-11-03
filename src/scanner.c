@@ -33,7 +33,9 @@ typedef enum
  STATE_COMMENT_NESTING_START,
  STATE_COMMENT_NESTING_END,
  STATE_COMMENT_NESTING_AFTER,
- STATE_INDENT
+ STATE_INDENT,
+ STATE_CONCATENATION,
+ STATE_DOT
  }STATE;
 
 void initScannerData (ScannerData *scanner) {
@@ -122,12 +124,7 @@ void getToken (Token *token, ScannerData *scanner) {
                         token->type = TOKEN_INT;
                     }
                 } else if (c == '.') {
-                    state = STATE_NUM_DOT;
-                    if (!addChar(&token_buffer, c)) {
-                        state = STATE_ERROR_MEMORY;
-                    } else {
-                        token->type = TOKEN_DOUBLE;
-                    }
+                    state = STATE_DOT;
                 } else if (c == '_') {
                     state = STATE_ID;
                     if (!addChar(&token_buffer, c)) {
@@ -135,8 +132,7 @@ void getToken (Token *token, ScannerData *scanner) {
                     }
                 } else if (c == '+') {
                     token->type = TOKEN_PLUS;
-                    token_found = 1;
-                    break;
+                    state = STATE_CONCATENATION;
                 } else if (c == '-') {
                     token->type = TOKEN_MINUS;
                     token_found = 1;
@@ -247,6 +243,25 @@ void getToken (Token *token, ScannerData *scanner) {
                 }
                 break;
 
+            case STATE_DOT:
+                if (isdigit(c)) {
+                    if (!addChar(&token_buffer, '.')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        if (!addChar(&token_buffer, c)) {
+                            state = STATE_ERROR_MEMORY;
+                        } else {
+                            token->type = TOKEN_DOUBLE;
+                            state = STATE_NUM;
+                        }
+                    }
+                } else {
+                    ungetc(c, stdin);
+                    token->type = TOKEN_DOT;
+                    token_found = 1;
+                }
+                break;
+
             case STATE_NUM_DOT:
                 if (isdigit(c)) {
                     state = STATE_NUM;
@@ -343,6 +358,15 @@ void getToken (Token *token, ScannerData *scanner) {
                     token_found = 1;
                     break;
                 }
+                break;
+
+            case STATE_CONCATENATION:
+                if (c == '+') {
+                    token->type = TOKEN_CONCATENATION;
+                } else {
+                    ungetc(c, stdin);
+                }
+                token_found = 1;
                 break;
 
             case STATE_WORD:
@@ -488,6 +512,9 @@ void getToken (Token *token, ScannerData *scanner) {
                     token->type = TOKEN_NEQ;
                     token_found = 1;
                     break;
+                } else if (token->type == TOKEN_LS && c == '-') {
+                    token->type = TOKEN_GEN_ARROW;
+                    token_found = 1;
                 } else {
                     ungetc(c, stdin);
                     token_found = 1;
