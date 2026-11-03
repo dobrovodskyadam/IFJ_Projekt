@@ -433,6 +433,12 @@ void getToken (Token *token, ScannerData *scanner) {
                                 token->type = TOKEN_FOR;
                             } else if (strcmp(token_buffer.str, "List") == 0) {
                                 token->type = TOKEN_LIST;
+                            } else if (strcmp(token_buffer.str, "until") == 0) {
+                                token->type = TOKEN_UNTIL;
+                            } else if (strcmp(token_buffer.str, "to") == 0) {
+                                token->type = TOKEN_TO;
+                            } else if (strcmp(token_buffer.str, "by") == 0) {
+                                token->type = TOKEN_BY;
                             } else {
                                 token->type = TOKEN_ID;
                                 token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
