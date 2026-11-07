@@ -11,7 +11,7 @@ from pathlib import Path
 
 # TODO: Define all possible tokens that can appear in expression on first place
 EXPRESSION_FIRST_SET = {
-    "TOKEN_ID",
+    # "TOKEN_ID",
     "TOKEN_LPAREN",
     "TOKEN_INT",
     "TOKEN_FLOAT",
@@ -25,6 +25,7 @@ EXPRESSION_FIRST_SET = {
 
 grammar_path = Path(__file__).parent.parent / "grammar.txt"
 csv_path = Path(__file__).parent.parent / "grammar.csv"
+grammar_stripped_path = Path(__file__).parent.parent / "grammar_striped.txt"
 
 
 def is_terminal(string: str):
@@ -183,6 +184,17 @@ def save_to_csv(table):
             writer.writerow(line)
 
 
+def save_rules(rules):
+    with open(grammar_stripped_path, "w", encoding="utf-8") as f:
+        for i, (left, right) in enumerate(rules):
+            if right:
+                right_str = " ".join(right)
+            else:
+                right_str = "ε"
+
+            f.write(f"{i + 1}: {left} -> {right_str}\n")
+
+
 # Creates array of all rules
 rules = []
 with open(grammar_path, encoding="utf-8") as f:
@@ -202,4 +214,6 @@ with open(grammar_path, encoding="utf-8") as f:
         rules, empty=empty_set, first=first_set, follow=follow_set
     )
     table = build_table(rules, predict_list)
+
     save_to_csv(table)
+    save_rules(rules)
