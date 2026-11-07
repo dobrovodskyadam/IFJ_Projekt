@@ -32,7 +32,9 @@ typedef enum {
     STATE_COMMENT_NESTING_START,
     STATE_COMMENT_NESTING_END,
     STATE_COMMENT_NESTING_AFTER,
-    STATE_INDENT
+    STATE_INDENT,
+    STATE_CONCATENATION,
+    STATE_DOT
 } STATE;
 
 void initScannerData(ScannerData *scanner) {
@@ -120,12 +122,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     token->type = TOKEN_INT;
                 }
             } else if (c == '.') {
-                state = STATE_NUM_DOT;
-                if (!addChar(&token_buffer, c)) {
-                    state = STATE_ERROR_MEMORY;
-                } else {
-                    token->type = TOKEN_DOUBLE;
-                }
+                state = STATE_DOT;
             } else if (c == '_') {
                 state = STATE_ID;
                 if (!addChar(&token_buffer, c)) {
@@ -133,8 +130,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 }
             } else if (c == '+') {
                 token->type = TOKEN_PLUS;
-                token_found = 1;
-                break;
+                state = STATE_CONCATENATION;
             } else if (c == '-') {
                 token->type = TOKEN_MINUS;
                 token_found = 1;
@@ -169,6 +165,18 @@ void getToken(Token *token, ScannerData *scanner) {
                 token->type = TOKEN_RPAREN;
                 token_found = 1;
                 break;
+            } else if (c == ',') {
+                token->type = TOKEN_COMMA;
+                token_found = 1;
+                break;
+            } else if (c == '[') {
+                token->type = TOKEN_LBRACKET;
+                token_found = 1;
+                break;
+            } else if (c == ']') {
+                token->type = TOKEN_RBRACKET;
+                token_found = 1;
+                break;
             } else if (c == '"') {
                 state = STATE_STR_QUOTE1;
             } else if (c == '\n') {
@@ -185,15 +193,6 @@ void getToken(Token *token, ScannerData *scanner) {
                 token_found = 1;
             } else if (c == ':') {
                 token->type = TOKEN_COLON;
-                token_found = 1;
-            } else if (c == ',') {
-                token->type = TOKEN_COMMA;
-                token_found = 1;
-            } else if (c == '[') {
-                token->type = TOKEN_LBRACKET;
-                token_found = 1;
-            } else if (c == ']') {
-                token->type = TOKEN_RBRACKET;
                 token_found = 1;
             } else if (c == '@') {
                 state = STATE_WORD;
@@ -251,6 +250,25 @@ void getToken(Token *token, ScannerData *scanner) {
                     token_found = 1;
                 }
                 break;
+            }
+            break;
+
+        case STATE_DOT:
+            if (isdigit(c)) {
+                if (!addChar(&token_buffer, '.')) {
+                    state = STATE_ERROR_MEMORY;
+                } else {
+                    if (!addChar(&token_buffer, c)) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_DOUBLE;
+                        state = STATE_NUM;
+                    }
+                }
+            } else {
+                ungetc(c, stdin);
+                token->type = TOKEN_DOT;
+                token_found = 1;
             }
             break;
 
@@ -352,6 +370,15 @@ void getToken(Token *token, ScannerData *scanner) {
             }
             break;
 
+        case STATE_CONCATENATION:
+            if (c == '+') {
+                token->type = TOKEN_CONCATENATION;
+            } else {
+                ungetc(c, stdin);
+            }
+            token_found = 1;
+            break;
+
         case STATE_WORD:
             if (isalpha(c)) {
                 state = STATE_WORD;
@@ -416,6 +443,12 @@ void getToken(Token *token, ScannerData *scanner) {
                             token->type = TOKEN_FOR;
                         } else if (strcmp(token_buffer.str, "List") == 0) {
                             token->type = TOKEN_LIST;
+                        } else if (strcmp(token_buffer.str, "until") == 0) {
+                            token->type = TOKEN_UNTIL;
+                        } else if (strcmp(token_buffer.str, "to") == 0) {
+                            token->type = TOKEN_TO;
+                        } else if (strcmp(token_buffer.str, "by") == 0) {
+                            token->type = TOKEN_BY;
                         } else if (strcmp(token_buffer.str, "true") == 0) {
                             token->type = TOKEN_TRUE;
                         } else if (strcmp(token_buffer.str, "false") == 0) {
@@ -499,6 +532,9 @@ void getToken(Token *token, ScannerData *scanner) {
                 token->type = TOKEN_NEQ;
                 token_found = 1;
                 break;
+            } else if (token->type == TOKEN_LS && c == '-') {
+                token->type = TOKEN_GEN_ARROW;
+                token_found = 1;
             } else {
                 ungetc(c, stdin);
                 token_found = 1;
@@ -554,8 +590,6 @@ void getToken(Token *token, ScannerData *scanner) {
                 state = STATE_ESCAPE;
             } else if (isascii(c) && c != '\n') {
                 state = STATE_STR;
-
-
                 if (!addChar(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
                 }
@@ -848,61 +882,68 @@ void getToken(Token *token, ScannerData *scanner) {
     freeTokenString(&token_buffer);
 }
 
-
 // Helper Static Array
-static const char *token_names[TOKEN_COUNT] = {[TOKEN_ID] = "TOKEN_ID",
-                                               [TOKEN_INT] = "TOKEN_INT",
-                                               [TOKEN_DOUBLE] = "TOKEN_DOUBLE",
-                                               [TOKEN_STRING] = "TOKEN_STRING",
-                                               [TOKEN_PLUS] = "TOKEN_PLUS",
-                                               [TOKEN_MINUS] = "TOKEN_MINUS",
-                                               [TOKEN_IF] = "TOKEN_IF",
-                                               [TOKEN_ELSE] = "TOKEN_ELSE",
-                                               [TOKEN_WHILE] = "TOKEN_WHILE",
-                                               [TOKEN_FOR] = "TOKEN_FOR",
-                                               [TOKEN_AND] = "TOKEN_AND",
-                                               [TOKEN_OR] = "TOKEN_OR",
-                                               [TOKEN_EQ] = "TOKEN_EQ",
-                                               [TOKEN_GR_EQ] = "TOKEN_GR_EQ",
-                                               [TOKEN_LS_EQ] = "TOKEN_LS_EQ",
-                                               [TOKEN_LS] = "TOKEN_LS",
-                                               [TOKEN_GR] = "TOKEN_GR",
-                                               [TOKEN_DEF] = "TOKEN_DEF",
-                                               [TOKEN_MUL] = "TOKEN_MUL",
-                                               [TOKEN_DIV] = "TOKEN_DIV",
-                                               [TOKEN_NEQ] = "TOKEN_NEQ",
-                                               [TOKEN_LPAREN] = "TOKEN_LPAREN",
-                                               [TOKEN_RPAREN] = "TOKEN_RPAREN",
-                                               [TOKEN_ASSIGN] = "TOKEN_ASSIGN",
-                                               [TOKEN_NOT] = "TOKEN_NOT",
-                                               [TOKEN_ERROR] = "TOKEN_ERROR",
-                                               [TOKEN_ERROR_MEMORY] = "TOKEN_ERROR_MEMORY",
-                                               [TOKEN_VAR] = "TOKEN_VAR",
-                                               [TOKEN_VAL] = "TOKEN_VAL",
-                                               [TOKEN_RETURN] = "TOKEN_RETURN",
-                                               [TOKEN_UNIT] = "TOKEN_UNIT",
-                                               [TOKEN_BOOLEAN] = "TOKEN_BOOLEAN",
-                                               [TOKEN_CASE] = "TOKEN_CASE",
-                                               [TOKEN_LIST] = "TOKEN_LIST",
-                                               [TOKEN_DO] = "TOKEN_DO",
-                                               [TOKEN_THEN] = "TOKEN_THEN",
-                                               [TOKEN_IMPORT] = "TOKEN_IMPORT",
-                                               [TOKEN_KW_STRING] = "TOKEN_KW_STRING",
-                                               [TOKEN_KW_INT] = "TOKEN_KW_INT",
-                                               [TOKEN_KW_DOUBLE] = "TOKEN_KW_DOUBLE",
-                                               [TOKEN_EOF] = "TOKEN_EOF",
-                                               [TOKEN_INDENT] = "TOKEN_INDENT",
-                                               [TOKEN_DEDENT] = "TOKEN_DEDENT",
-                                               [TOKEN_EOL] = "TOKEN_EOL",
-                                               [TOKEN_SEPARATOR] = "TOKEN_SEPARATOR",
-                                               [TOKEN_COLON] = "TOKEN_COLON",
-                                               [TOKEN_IFJ] = "TOKEN_IFJ",
-                                               [TOKEN_MAIN] = "TOKEN_MAIN",
-                                               [TOKEN_COMMA] = "TOKEN_COMMA",
-                                               [TOKEN_TRUE] = "TOKEN_TRUE",
-                                               [TOKEN_FALSE] = "TOKEN_FALSE",
-                                               [TOKEN_LBRACKET] = "TOKEN_LBRACKET",
-                                               [TOKEN_RBRACKET] = "TOKEN_RBRACKET"};
+static const char *token_names[TOKEN_COUNT] = {
+    [TOKEN_ID] = "TOKEN_ID",
+    [TOKEN_INT] = "TOKEN_INT",
+    [TOKEN_DOUBLE] = "TOKEN_DOUBLE",
+    [TOKEN_STRING] = "TOKEN_STRING",
+    [TOKEN_PLUS] = "TOKEN_PLUS",
+    [TOKEN_MINUS] = "TOKEN_MINUS",
+    [TOKEN_IF] = "TOKEN_IF",
+    [TOKEN_ELSE] = "TOKEN_ELSE",
+    [TOKEN_WHILE] = "TOKEN_WHILE",
+    [TOKEN_FOR] = "TOKEN_FOR",
+    [TOKEN_AND] = "TOKEN_AND",
+    [TOKEN_OR] = "TOKEN_OR",
+    [TOKEN_EQ] = "TOKEN_EQ",
+    [TOKEN_GR_EQ] = "TOKEN_GR_EQ",
+    [TOKEN_LS_EQ] = "TOKEN_LS_EQ",
+    [TOKEN_LS] = "TOKEN_LS",
+    [TOKEN_GR] = "TOKEN_GR",
+    [TOKEN_DEF] = "TOKEN_DEF",
+    [TOKEN_MUL] = "TOKEN_MUL",
+    [TOKEN_DIV] = "TOKEN_DIV",
+    [TOKEN_NEQ] = "TOKEN_NEQ",
+    [TOKEN_LPAREN] = "TOKEN_LPAREN",
+    [TOKEN_RPAREN] = "TOKEN_RPAREN",
+    [TOKEN_ASSIGN] = "TOKEN_ASSIGN",
+    [TOKEN_NOT] = "TOKEN_NOT",
+    [TOKEN_ERROR] = "TOKEN_ERROR",
+    [TOKEN_ERROR_MEMORY] = "TOKEN_ERROR_MEMORY",
+    [TOKEN_VAR] = "TOKEN_VAR",
+    [TOKEN_VAL] = "TOKEN_VAL",
+    [TOKEN_RETURN] = "TOKEN_RETURN",
+    [TOKEN_UNIT] = "TOKEN_UNIT",
+    [TOKEN_BOOLEAN] = "TOKEN_BOOLEAN",
+    [TOKEN_CASE] = "TOKEN_CASE",
+    [TOKEN_LIST] = "TOKEN_LIST",
+    [TOKEN_DO] = "TOKEN_DO",
+    [TOKEN_THEN] = "TOKEN_THEN",
+    [TOKEN_IMPORT] = "TOKEN_IMPORT",
+    [TOKEN_KW_STRING] = "TOKEN_KW_STRING",
+    [TOKEN_KW_INT] = "TOKEN_KW_INT",
+    [TOKEN_KW_DOUBLE] = "TOKEN_KW_DOUBLE",
+    [TOKEN_EOF] = "TOKEN_EOF",
+    [TOKEN_INDENT] = "TOKEN_INDENT",
+    [TOKEN_DEDENT] = "TOKEN_DEDENT",
+    [TOKEN_EOL] = "TOKEN_EOL",
+    [TOKEN_SEPARATOR] = "TOKEN_SEPARATOR",
+    [TOKEN_COLON] = "TOKEN_COLON",
+    [TOKEN_IFJ] = "TOKEN_IFJ",
+    [TOKEN_MAIN] = "TOKEN_MAIN",
+    [TOKEN_COMMA] = "TOKEN_COMMA",
+    [TOKEN_TRUE] = "TOKEN_TRUE",
+    [TOKEN_FALSE] = "TOKEN_FALSE",
+    [TOKEN_LBRACKET] = "TOKEN_LBRACKET",
+    [TOKEN_RBRACKET] = "TOKEN_RBRACKET",
+    [TOKEN_DOT] = "TOKEN_DOT",
+    [TOKEN_GEN_ARROW] = "TOKEN_GEN_ARROW",
+    [TOKEN_CONCATENATION] = "TOKEN_CONCATENATION",
+    [TOKEN_UNTIL] = "TOKEN_UNTIL",
+    [TOKEN_TO] = "TOKEN_TO",
+    [TOKEN_BY] = "TOKEN_BY",
+};
 
 // Function for getting the TokenName from the TokenType
 const char *tokenTypeName(TokenType type) {

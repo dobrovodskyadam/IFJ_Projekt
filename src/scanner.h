@@ -50,12 +50,18 @@ typedef enum {
     TOKEN_COLON,
     TOKEN_IFJ,
     TOKEN_MAIN,
+    TOKEN_DOT,
+    TOKEN_GEN_ARROW,
+    TOKEN_CONCATENATION,
+    TOKEN_UNTIL,
+    TOKEN_TO,
+    TOKEN_BY,
     TOKEN_COMMA,
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_LBRACKET,
     TOKEN_RBRACKET,
-    TOKEN_COUNT // Number of token types, keep last
+    TOKEN_COUNT
 } TokenType;
 
 typedef struct {
