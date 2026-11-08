@@ -66,6 +66,7 @@ typedef enum {
 
 typedef struct {
     TokenType type;
+    unsigned int line;
     union {
         int int_val;
         double double_val;
@@ -84,6 +85,7 @@ typedef struct {
     int stack_top;
     int dedent;
     int new_line;
+    unsigned line;
 } ScannerData;
 
 

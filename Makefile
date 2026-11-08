@@ -30,7 +30,7 @@ TEST_C_SRCS = $(filter-out $(SRC_DIR)/main.c, $(SRCS))
 TEST_OBJS = $(TEST_C_SRCS:.c=.o)
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
 
-.PHONY: build debug clean test format
+.PHONY: build debug clean test format test-on-merlin
 
 build:
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
@@ -50,5 +50,8 @@ test: $(TEST_OBJS) $(TEST_SRC)
 
 clean:
 	rm -f $(TARGET) run_tests $(SRC_DIR)/*.o
+
+test-on-merlin:
+	./tools/test_on_merlin.sh
 
 # End of file

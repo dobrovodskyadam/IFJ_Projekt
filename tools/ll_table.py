@@ -14,7 +14,7 @@ EXPRESSION_FIRST_SET = {
     # "TOKEN_ID",
     "TOKEN_LPAREN",
     "TOKEN_INT",
-    "TOKEN_FLOAT",
+    "TOKEN_DOUBLE",
     "TOKEN_STRING",
     "TOKEN_NOT",
     "TOKEN_MINUS",

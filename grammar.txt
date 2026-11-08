@@ -36,6 +36,7 @@
 <type> -> TOKEN_BOOLEAN
 <type> -> TOKEN_KW_DOUBLE
 <type> -> TOKEN_KW_STRING
+<type> ->  TOKEN_LIST TOKEN_LBRACKET <type> TOKEN_RBRACKET
 <opt-type> -> TOKEN_COLON <type>
 <opt-type> -> ε
 
@@ -83,19 +84,8 @@
 
 <list-guards> -> ε
 <list-guards> -> <guard> TOKEN_EOL <list-guards>
-
 <guard> -> TOKEN_IF <expression>
-<generator> -> TOKEN_ID TOKEN_LARROW <expression> <range>
 
-<range> -> ε
-<range> -> #TO <expression> <opt-by>
-<range> -> #UNTIL <expression>
-
-<opt-by> -> ε
-<opt-by> -> #BY <expression>
-
-
-# TODO List support
 
 # If Statement
 # Used as normal if statement (with optional else if and else)

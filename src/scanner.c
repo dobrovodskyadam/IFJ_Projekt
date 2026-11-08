@@ -42,6 +42,7 @@ void initScannerData(ScannerData *scanner) {
     scanner->stack_top = 0;
     scanner->dedent = 0;
     scanner->new_line = 1;
+    scanner->line = 1;
 }
 
 int initTokenString(TokenString *token_buffer) {
@@ -71,6 +72,13 @@ int addChar(TokenString *token_buffer, char c) {
     return 1;
 }
 
+void unreadChar(int c, FILE *source, ScannerData *scanner) {
+    if (c == '\n') {
+        scanner->line--;
+    }
+    ungetc(c, source);
+}
+
 void freeTokenString(TokenString *token_buffer) {
     free(token_buffer->str);
     token_buffer->capacity = 0;
@@ -84,12 +92,14 @@ void getToken(Token *token, ScannerData *scanner) {
         token->type = TOKEN_DEDENT;
         return;
     }
+
     STATE state = STATE_START;
     TokenString token_buffer;
     if (!initTokenString(&token_buffer)) {
         token->type = TOKEN_ERROR_MEMORY;
         return;
     }
+
     int token_found = 0;
     int comment_nesting = 0;
     int comment_new_line = 0;
@@ -97,6 +107,11 @@ void getToken(Token *token, ScannerData *scanner) {
     while (!token_found) {
         int c;
         c = fgetc(stdin);
+
+        if (c == '\n') {
+            scanner->line++;
+        }
+
         switch (state) {
         case STATE_START:
             if (scanner->new_line == 1) {
@@ -106,7 +121,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 } else if (c == '\n') {
                     state = STATE_START;
                 } else {
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     state = STATE_INDENT;
                 }
             } else if (isalpha(c)) {
@@ -246,7 +261,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     if (token->type == TOKEN_DOUBLE) {
                         token->value.double_val = atof(token_buffer.str);
                     }
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     token_found = 1;
                 }
                 break;
@@ -266,7 +281,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     }
                 }
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token->type = TOKEN_DOT;
                 token_found = 1;
             }
@@ -350,7 +365,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     state = STATE_ERROR_MEMORY;
                 } else {
                     token->value.double_val = atof(token_buffer.str);
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     token_found = 1;
                 }
                 break;
@@ -374,7 +389,7 @@ void getToken(Token *token, ScannerData *scanner) {
             if (c == '+') {
                 token->type = TOKEN_CONCATENATION;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
             }
             token_found = 1;
             break;
@@ -399,7 +414,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 if (!addChar(&token_buffer, '\0')) {
                     state = STATE_ERROR_MEMORY;
                 } else {
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     if (token_buffer.str[0] == '@') {
                         if (strcmp(token_buffer.str, "@main") == 0) {
                             token->type = TOKEN_MAIN;
@@ -500,7 +515,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     if (!addChar(&token_buffer, '\0')) {
                         state = STATE_ERROR_MEMORY;
                     } else {
-                        ungetc(c, stdin);
+                        unreadChar(c, stdin, scanner);
                         token->type = TOKEN_ID;
                         token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
                         if (token->value.str_val == NULL) {
@@ -536,7 +551,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 token->type = TOKEN_GEN_ARROW;
                 token_found = 1;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token_found = 1;
                 break;
             }
@@ -726,7 +741,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 comment_nesting++;
                 state = STATE_COMMENT_NESTING;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token->type = TOKEN_DIV;
                 token_found = 1;
                 break;
@@ -735,7 +750,7 @@ void getToken(Token *token, ScannerData *scanner) {
 
         case STATE_COMMENT:
             if (c == '\n') {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 state = STATE_START;
             } else {
                 state = STATE_COMMENT;
@@ -803,7 +818,7 @@ void getToken(Token *token, ScannerData *scanner) {
         case STATE_COMMENT_NESTING_AFTER:
             comment_new_line = 0;
             if (c == '\n') {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 state = STATE_START;
             } else if (isspace(c)) {
                 state = STATE_COMMENT_NESTING_AFTER;
@@ -839,7 +854,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     token_found = 1;
                 }
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 int last_space_count = scanner->indent_stack[scanner->stack_top];
                 if (space_count > last_space_count) {
                     scanner->stack_top++;
@@ -879,8 +894,11 @@ void getToken(Token *token, ScannerData *scanner) {
             token_found = 1;
         }
     }
+
+    token->line = (token->type == TOKEN_EOL) ? scanner->line - 1 : scanner->line;
     freeTokenString(&token_buffer);
 }
+
 
 // Helper Static Array
 static const char *token_names[TOKEN_COUNT] = {

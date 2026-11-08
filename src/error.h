@@ -13,4 +13,4 @@ typedef enum {
     ERR_SYNTAX = 2,
 } ErrorCode;
 
-void error_exit(ErrorCode code, const char *fmt, ...);
+void error_exit(ErrorCode code, unsigned line, const char *fmt, ...);

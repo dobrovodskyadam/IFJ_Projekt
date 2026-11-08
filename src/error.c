@@ -11,15 +11,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void error_exit(ErrorCode code, const char *fmt, ...) {
+void error_exit(ErrorCode code, unsigned line, const char *fmt, ...) {
 #ifdef DEBUG_MSG
+    if (line > 0) {
+        fprintf(stderr, "line %u: ", line);
+    }
+
     va_list args;
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
     va_end(args);
 #else
-    // For supressing warning: unused parameter ‘fmt’ [-Wunused-parameter]
+    // For supressing warning: unused parameter [-Wunused-parameter]
+    (void)line;
     (void)fmt;
 #endif
     exit(code);
