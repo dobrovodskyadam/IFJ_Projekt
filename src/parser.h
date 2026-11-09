@@ -6,6 +6,9 @@
 // @author Email: xsofkal00@stud.fit.vutbr.cz
 // Faculty of Information Technology, Brno University of Technology`
 
+#ifndef PARSER_H
+#define PARSER_H
+
 #include "scanner.h"
 #include <stdbool.h>
 
@@ -96,3 +99,5 @@ void expect(TokenType type);
 void syntax_error(const char *expected);
 bool is_expression_start(TokenType type);
 int parse(void);
+
+#endif

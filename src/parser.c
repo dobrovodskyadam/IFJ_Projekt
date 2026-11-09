@@ -10,6 +10,7 @@
 
 #include "parser.h"
 #include "error.h"
+#include "expression_parser.h"
 #include "scanner.h"
 #include "symtable.h"
 
@@ -261,11 +262,6 @@ void parse_if_statement(void) {
 }
 
 // @brief
-void parse_expression(void) {
-    printf("Current token: %s\n", tokenTypeName(current.type));
-    return;
-}
-
 void parse_statement_list(void) {
     parse_statement();
     parse_statement_list_rest();
@@ -513,10 +509,13 @@ void parse_generator(void) {
 // @brief
 void parse_st_else_part(void) {
     if (current.type == TOKEN_EOL) {
+        expect(TOKEN_EOL);
         parse_block();
-        parse_st_then_part();
+    } else if (current.type == TOKEN_IF) {
+        parse_if_statement();
     } else if (is_expression_start(current.type)) {
-        parse_st_after_inline_part();
+        parse_expression();
+        parse_statement_end();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
@@ -584,6 +583,7 @@ void parse_function_call(void) {
 void parse_list_arguments(void) {
     if (current.type == TOKEN_RPAREN) {
         return;
+
     } else if (is_expression_start(current.type)) {
         parse_argument();
         parse_more_list_arguments();
@@ -623,6 +623,6 @@ int parse(void) {
 // @brief
 int main(void) {
     if (parse() == 0) {
-        fprintf(stderr, "Syntax is good\n");
+        fprintf(stderr, "Syntax is okay\n");
     }
 }

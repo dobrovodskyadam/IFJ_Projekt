@@ -85,7 +85,7 @@
 <list-guards> -> ε
 <list-guards> -> <guard> TOKEN_EOL <list-guards>
 <guard> -> TOKEN_IF <expression>
-
+<generator> -> TOKEN_ID TOKEN_GEN_ARROW <expression>
 
 # If Statement
 # Used as normal if statement (with optional else if and else)
