@@ -130,4 +130,6 @@
 <list-arguments> -> ε
 <more-list-arguments> -> TOKEN_COMMA <argument> <more-list-arguments>
 <more-list-arguments> -> ε
+
+# TODO: Here we have only expression but the argument can be if-value aswell
 <argument> -> <expression>

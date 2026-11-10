@@ -1,5 +1,5 @@
 // @file expression_parser.c
-// @brief
+// @brief Precedence parser for expressions
 // @date 07-11-2026
 //
 // @author Lukas Sofka (xsofkal00)
@@ -35,12 +35,21 @@ typedef enum {
     S_MARK     // <
 } Symbol;
 
+
 typedef struct AStack {
     Symbol *items;
     int count;
     int capacity;
 } Stack;
 
+
+// @brief  Precedence Table
+// row     - topmost terminal on the stack
+// columnt - current input symbol
+// <       - shift with mark
+// =       - shift without mark
+// >       - reduce
+// ' '     - syntax error
 const char precedence_table[S_COUNT][S_COUNT] = {
     //                 i    (    )    .    !    *    +    >   ==   &&   ||   to    $
     [S_OPERAND]  =  { ' ', ' ', '>', '>', ' ', '>', '>', '>', '>', '>', '>', '>', '>'},
@@ -59,7 +68,8 @@ const char precedence_table[S_COUNT][S_COUNT] = {
 };
 // clang-format on
 
-// @brief
+
+// @brief Initialize the stack with capacity set with STACK_INITIAL_CAPACITY
 void initStack(Stack *stack) {
     stack->capacity = STACK_INITIAL_CAPACITY;
     stack->count = 0;
@@ -69,12 +79,12 @@ void initStack(Stack *stack) {
     }
 }
 
-// @brief
+// @brief Free stack from memory
 void freeStack(Stack *stack) {
     free(stack->items);
 }
 
-// @brief
+// @brief Push an element to stack
 void pushStack(Stack *stack, Symbol symbol) {
     if (stack->count == stack->capacity) {
         stack->capacity *= 2;
@@ -89,18 +99,19 @@ void pushStack(Stack *stack, Symbol symbol) {
     stack->count++;
 }
 
-// @brief
+// @brief Pop topmost element and return it
 Symbol popStack(Stack *stack) {
     stack->count--;
     return stack->items[stack->count];
 }
 
-// @brief
+// @brief Predicate whether stack is empty
 bool isEmptyStack(Stack *stack) {
     return stack->count == 0;
 }
 
-// @brief
+// @brief Returns the first terminal on the stack
+// Skips S_MARK and S_EXPR
 Symbol topTerminal(Stack *stack) {
     int i = stack->count - 1;
     while (stack->items[i] >= S_COUNT) {
@@ -110,7 +121,7 @@ Symbol topTerminal(Stack *stack) {
     return stack->items[i];
 }
 
-// @brief
+// @brief Inserts S_MARK right after the given terminal
 void insertMark(Stack *stack, Symbol terminal) {
     Stack temp;
     initStack(&temp);
@@ -128,12 +139,13 @@ void insertMark(Stack *stack, Symbol terminal) {
     freeStack(&temp);
 }
 
-// @brief
+// @brief Predicate whether the end condition is met
+// End condition: $E
 bool isExpressionFinished(Stack *stack) {
     return stack->count == 2 && stack->items[0] == S_END && stack->items[1] == S_EXPR;
 }
 
-// @brief
+// @brief Converts the current token to a symbol
 Symbol tokenToSymbol(void) {
     switch (current.type) {
     case TOKEN_ID:
@@ -204,7 +216,12 @@ Symbol tokenToSymbol(void) {
     }
 }
 
-// @brief
+// @brief Reduces right side of a rule to S_EXPR
+// Left       Right Side
+// E     ->   E op E
+// E     ->   unary E
+// E     ->   i
+// E     ->   ( E )
 void reduce(Stack *stack) {
     int mark_idx = stack->count - 1;
     while (stack->items[mark_idx] != S_MARK) {
@@ -229,30 +246,32 @@ void reduce(Stack *stack) {
         break;
 
     case 3:
+        // clang-format off
         if (handle[0] == S_LPAREN && handle[1] == S_EXPR && handle[2] == S_RPAREN) {
             valid = true;
         } else if (handle[0] == S_EXPR &&
                    (handle[1] == S_DOT || handle[1] == S_ADD || handle[1] == S_MUL ||
-                    handle[1] == S_EQ || handle[1] == S_REL || handle[1] == S_AND ||
-                    handle[1] == S_OR || handle[1] == S_RANGE) &&
+                    handle[1] == S_EQ  || handle[1] == S_REL || handle[1] == S_AND ||
+                    handle[1] == S_OR  || handle[1] == S_RANGE) &&
                    handle[2] == S_EXPR) {
             valid = true;
+            // clang-format on
         }
         break;
 
     default:
-        syntax_error("Expression error");
+        syntax_error("expression");
     }
 
     if (!valid) {
-        syntax_error("Expression error");
+        syntax_error("expression");
     }
 
     stack->count = mark_idx;
     pushStack(stack, S_EXPR);
 }
 
-// @brief
+// @brief Predicate whether there is S_LPAREN on the stack
 bool hasOpenParen(Stack *stack) {
     for (int i = 0; i < stack->count; i++) {
         if (stack->items[i] == S_LPAREN) {
@@ -264,7 +283,8 @@ bool hasOpenParen(Stack *stack) {
 }
 
 
-// @brief
+// @brief Parses one expression using the precedence table
+// Stops at the first token that is not part of an expression
 void parse_expression(void) {
     Stack stack;
     initStack(&stack);
@@ -273,13 +293,17 @@ void parse_expression(void) {
     Symbol top_terminal, input;
 
     while (true) {
+        // Get the topmost terminal and current symbol (in presentations a,b)
         top_terminal = topTerminal(&stack);
         input = tokenToSymbol();
 
+
+        // The S_LPAREN of a function call is not pushed, so rparen with no lparen ends expression
         if (input == S_RPAREN && !hasOpenParen(&stack)) {
             input = S_END;
         }
 
+        // End when the input has ended and on stack is only $E
         if (isExpressionFinished(&stack) && input == S_END) {
             break;
         }
@@ -289,6 +313,7 @@ void parse_expression(void) {
             insertMark(&stack, top_terminal);
 
             // TODO: maybe a bit loose definition of calling a function
+            // Need to discsuc with others
             if (current.type == TOKEN_ID && next.type == TOKEN_LPAREN) {
                 parse_function_call();
                 pushStack(&stack, S_OPERAND);
@@ -308,7 +333,7 @@ void parse_expression(void) {
             break;
 
         default:
-            syntax_error("Expression error");
+            syntax_error("expression");
         }
     }
 
