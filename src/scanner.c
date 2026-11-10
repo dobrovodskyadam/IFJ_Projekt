@@ -572,7 +572,18 @@ void getToken (Token *token, ScannerData *scanner) {
 
             case STATE_STR:
                 if (c == '"') {
-                    state = STATE_STR_QUOTE2;
+                    if (!addChar(&token_buffer, '\0')) {
+                        state = STATE_ERROR_MEMORY;
+                    } else {
+                        token->type = TOKEN_STRING;
+                        token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
+                        if (token->value.str_val == NULL) {
+                            token->type = TOKEN_ERROR_MEMORY;
+                        } else {
+                            strcpy(token->value.str_val, token_buffer.str);
+                        }
+                        token_found = 1;
+                    }
                 } else if (c == '\\') {
                     state = STATE_ESCAPE;
                 } 
@@ -637,7 +648,7 @@ void getToken (Token *token, ScannerData *scanner) {
                         }
                         token_found = 1;
                     }
-                    break;
+                    ungetc(c, stdin);
                 }
                 break;
 
