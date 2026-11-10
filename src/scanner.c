@@ -112,6 +112,7 @@ void getToken (Token *token, ScannerData *scanner) {
     int comment_nesting = 0;
     int comment_new_line = 0;
     int space_count = 0;
+    int has_tab = 0;
     while (!token_found) {
         int c;
         c = fgetc(stdin);
@@ -206,6 +207,9 @@ void getToken (Token *token, ScannerData *scanner) {
                     if (!addChar(&token_buffer, c)) {
                         state = STATE_ERROR_MEMORY;
                     }
+                } else if (c == '\t') {
+                    has_tab = 1;
+                    state = STATE_INDENT;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
@@ -838,15 +842,21 @@ void getToken (Token *token, ScannerData *scanner) {
                 if (c == ' ') {
                     space_count++;
                     state = STATE_INDENT;
+                } else if (c == '\t') {
+                    has_tab = 1;
+                    state = STATE_INDENT;
                 } else if (c == '\n') {
+                    has_tab = 0;
                     space_count = 0;
                     state = STATE_START;
                 } else if ( c == '/') {
                     int next_c = fgetc(stdin);
                     if (next_c == '/') {
+                        has_tab = 0;
                         space_count = 0;
                         state = STATE_COMMENT;
                     } else if (next_c == '*') {
+                        has_tab = 0;
                         space_count = 0;
                         comment_nesting++;
                         state = STATE_COMMENT_NESTING;
@@ -855,6 +865,11 @@ void getToken (Token *token, ScannerData *scanner) {
                         token_found = 1;
                     }
                 } else {
+                    if (has_tab) {
+                        token->type = TOKEN_ERROR;
+                        token_found = 1;
+                        break;
+                    }
                     ungetc(c, stdin);
                     int last_space_count = scanner->indent_stack[scanner->stack_top];
                     if (space_count > last_space_count) {
