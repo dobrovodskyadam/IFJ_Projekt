@@ -77,7 +77,8 @@ typedef struct
 
 typedef struct
 {
-    int indent_stack[100];
+    int stack_capacity;
+    int *indent_stack;
     int stack_top;
     int dedent;
     int new_line;
@@ -89,7 +90,7 @@ typedef struct
 extern "C" {
 #endif
 
-void initScannerData (ScannerData *scanner);
+int initScannerData (ScannerData *scanner);
 void getToken(Token *token, ScannerData *scanner);
 
 #ifdef __cplusplus

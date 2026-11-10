@@ -38,11 +38,28 @@ typedef enum
  STATE_DOT
  }STATE;
 
-void initScannerData (ScannerData *scanner) {
+int initScannerData (ScannerData *scanner) {
+    scanner->stack_capacity = 8;
+    scanner->indent_stack = malloc(scanner->stack_capacity * sizeof(int));
+    if (scanner->indent_stack == NULL) {
+        return 0;
+    }
     scanner->indent_stack[0] = 0;
     scanner->stack_top = 0;
     scanner->dedent = 0;
     scanner->new_line = 1;
+    return 1;
+}
+
+int addStackCapacity (ScannerData *scanner) {
+    int new_capacity = scanner->stack_capacity * 2;
+    int *tmp = realloc(scanner->indent_stack, new_capacity * sizeof(int));
+    if (tmp == NULL) {
+        return 0;
+    }
+    scanner->indent_stack = tmp;
+    scanner->stack_capacity = new_capacity;
+    return 1;
 }
 
 int initTokenString (TokenString *token_buffer) {
@@ -842,6 +859,12 @@ void getToken (Token *token, ScannerData *scanner) {
                     int last_space_count = scanner->indent_stack[scanner->stack_top];
                     if (space_count > last_space_count) {
                         scanner->stack_top++;
+                        if (scanner->stack_top == scanner->stack_capacity) {
+                            if (!addStackCapacity(scanner)) {
+                                state = STATE_ERROR_MEMORY;
+                                break;
+                            }
+                        }
                         scanner->indent_stack[scanner->stack_top] = space_count;
                         scanner->new_line = 0;
                         token->type = TOKEN_INDENT;
