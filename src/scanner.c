@@ -154,11 +154,9 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == '-') {
                     token->type = TOKEN_MINUS;
                     token_found = 1;
-                    break;
                 } else if (c == '*') {
                     token->type = TOKEN_MUL;
                     token_found = 1;
-                    break;
                 } else if (c == '/') {
                     state = STATE_IS_COMMENT;
                 } else if (c == '<') {
@@ -180,11 +178,9 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == '(') {
                     token->type = TOKEN_LPAREN;
                     token_found = 1;
-                    break;
                 } else if (c == ')') {
                     token->type = TOKEN_RPAREN;
                     token_found = 1;
-                    break;
                 } else if (c == '"') {
                     state = STATE_STR_QUOTE1;
                 } else if (c == '\n') {
@@ -213,7 +209,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -246,7 +241,6 @@ void getToken (Token *token, ScannerData *scanner) {
                         token->value.double_val = atof(token_buffer.str);
                         token_found = 1;
                     }
-                    break;
                 } else {
                     if (!addChar(&token_buffer, '\0')) {
                         state = STATE_ERROR_MEMORY;
@@ -260,7 +254,6 @@ void getToken (Token *token, ScannerData *scanner) {
                         ungetc(c, stdin);
                         token_found = 1;
                     }
-                    break;
                 }
                 break;
 
@@ -292,7 +285,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -305,7 +297,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
             
@@ -323,7 +314,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -336,7 +326,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -355,7 +344,6 @@ void getToken (Token *token, ScannerData *scanner) {
                         token->value.double_val = atof(token_buffer.str);
                         token_found = 1;
                     }
-                    break;
                 } else {
                     if (!addChar(&token_buffer, '\0')) {
                         state = STATE_ERROR_MEMORY;
@@ -364,7 +352,6 @@ void getToken (Token *token, ScannerData *scanner) {
                         ungetc(c, stdin);
                         token_found = 1;
                     }
-                    break;
                 }
                 break;
             
@@ -377,7 +364,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -517,7 +503,6 @@ void getToken (Token *token, ScannerData *scanner) {
                             }
                             token_found = 1;
                         }
-                        break;
                     }
                 }
                 break;
@@ -526,26 +511,21 @@ void getToken (Token *token, ScannerData *scanner) {
                 if (token->type == TOKEN_LS && c == '=') {
                     token->type = TOKEN_LS_EQ;
                     token_found = 1;
-                    break;
                 } else if (token->type == TOKEN_GR && c == '=') {
                     token->type = TOKEN_GR_EQ;
                     token_found = 1;
-                    break;
                 } else if (token->type == TOKEN_ASSIGN && c == '=') {
                     token->type = TOKEN_EQ;
                     token_found = 1;
-                    break;
                 } else if (token->type == TOKEN_NOT && c == '=') {
                     token->type = TOKEN_NEQ;
                     token_found = 1;
-                    break;
                 } else if (token->type == TOKEN_LS && c == '-') {
                     token->type = TOKEN_GEN_ARROW;
                     token_found = 1;
                 } else {
                     ungetc(c, stdin);
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -553,11 +533,9 @@ void getToken (Token *token, ScannerData *scanner) {
                 if (c == '&') {
                     token->type = TOKEN_AND;
                     token_found = 1;
-                    break;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -565,11 +543,9 @@ void getToken (Token *token, ScannerData *scanner) {
                 if (c == '|') {
                     token->type = TOKEN_OR;
                     token_found = 1;
-                    break;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -587,7 +563,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -616,7 +591,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -649,7 +623,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
             
@@ -702,7 +675,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
             
@@ -720,7 +692,6 @@ void getToken (Token *token, ScannerData *scanner) {
                         }
                         token_found = 1;
                     }
-                    break;
                 } else if (isascii(c)) {
                     state = STATE_STR_QUOTE3;
                     if (!addChar(&token_buffer, '"')) {
@@ -735,7 +706,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -749,7 +719,6 @@ void getToken (Token *token, ScannerData *scanner) {
                     ungetc(c, stdin);
                     token->type = TOKEN_DIV;
                     token_found = 1;
-                    break;
                 }
                 break;
 
@@ -770,7 +739,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == EOF) {
                     token_found = 1;
                     token->type = TOKEN_ERROR;
-                    break;
                 } else if (c == '\n') {
                     comment_new_line++;
                 } else {
@@ -785,7 +753,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == EOF) {
                     token_found = 1;
                     token->type = TOKEN_ERROR;
-                    break;
                 } else if (c == '\n') {
                     comment_new_line++;
                     state = STATE_COMMENT_NESTING;
@@ -811,7 +778,6 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == EOF) {
                     token_found = 1;
                     token->type = TOKEN_ERROR;
-                    break;
                 } else if (c == '\n') {
                     comment_new_line++;
                     state = STATE_COMMENT_NESTING;
@@ -830,11 +796,9 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == EOF) {
                     token_found = 1;
                     token->type = TOKEN_EOF;
-                    break;
                 } else {
                     token_found = 1;
                     token->type = TOKEN_ERROR;
-                    break;
                 }
                 break;
 
