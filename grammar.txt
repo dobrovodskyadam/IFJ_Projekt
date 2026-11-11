@@ -93,10 +93,12 @@
 
 <st-then-part> -> TOKEN_EOL <block> <st-opt-else>
 <st-then-part> -> <expression> <st-after-inline-part>
+<st-then-part> -> TOKEN_RETURN <expression> <st-after-inline-part>
 
 <st-else-part> -> TOKEN_EOL <block>
 <st-else-part> -> <expression> <statement-end>
 <st-else-part> -> <if-statement>
+<st-else-part> -> <return>
 
 <st-opt-else> -> TOKEN_ELSE <st-else-part>
 <st-opt-else> -> ε
@@ -117,7 +119,10 @@
 
 <value-else-part> -> <expression> <statement-end>
 <value-else-part> -> TOKEN_EOL <block>
+<value-else-part> -> <if-value>
 
+# List
+<list-literal> -> TOKEN_LIST TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
 
 # Expressions
 # Expressions will be parsed else where

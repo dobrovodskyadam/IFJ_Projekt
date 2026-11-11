@@ -92,6 +92,9 @@ void parse_list_arguments(void);
 void parse_more_list_arguments(void);
 void parse_argument(void);
 
+// List Literal
+void parse_list_literal(void);
+
 // Helper functions declarations
 void fill_tokens(void);
 void next_token(void);

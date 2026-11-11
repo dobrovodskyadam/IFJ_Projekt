@@ -1,5 +1,5 @@
 // @file error.c
-// @brief
+// @brief Helper module for printing and managing error codes of parser
 // @date 06-11-2026
 //
 // @author Lukas Sofka (xsofkal00)

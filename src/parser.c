@@ -282,6 +282,10 @@ void parse_st_then_part(void) {
         next_token();
         parse_block();
         parse_st_opt_else();
+    } else if (current.type == TOKEN_RETURN) {
+        expect(TOKEN_RETURN);
+        parse_expression();
+        parse_st_after_inline_part();
     } else if (is_expression_start(current.type)) {
         parse_expression();
         parse_st_after_inline_part();
@@ -513,6 +517,8 @@ void parse_st_else_part(void) {
         parse_block();
     } else if (current.type == TOKEN_IF) {
         parse_if_statement();
+    } else if (current.type == TOKEN_RETURN) {
+        parse_return();
     } else if (is_expression_start(current.type)) {
         parse_expression();
         parse_statement_end();
@@ -532,10 +538,13 @@ void parse_if_value(void) {
 // @brief
 void parse_value_then_part(void) {
     if (current.type == TOKEN_EOL) {
+        expect(TOKEN_EOL);
         parse_block();
+        expect(TOKEN_ELSE);
+        parse_value_else_part();
     } else if (is_expression_start(current.type)) {
         parse_expression();
-        parse_value_then_part();
+        parse_value_after_inline_part();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
@@ -563,6 +572,8 @@ void parse_value_else_part(void) {
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
         parse_block();
+    } else if (current.type == TOKEN_IF) {
+        parse_if_value();
     } else if (is_expression_start(current.type)) {
         parse_expression();
         parse_statement_end();
@@ -610,6 +621,13 @@ void parse_more_list_arguments(void) {
 // @brief
 void parse_argument(void) {
     parse_expression();
+}
+
+void parse_list_literal(void) {
+    expect(TOKEN_LIST);
+    expect(TOKEN_LPAREN);
+    parse_list_arguments();
+    expect(TOKEN_RPAREN);
 }
 
 // @brief

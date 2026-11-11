@@ -23,12 +23,12 @@ typedef enum {
     S_DOT,     // .
     S_UNARY,   // -, !, +
     S_MUL,     // *, /
-    S_ADD,     // +, -
+    S_ADD,     // +, -, ++
     S_REL,     // <=, >=, >, <
     S_EQ,      // ==, !=
     S_AND,     // &&
     S_OR,      // ||
-    S_RANGE,   // to
+    S_RANGE,   // to, until, by
     S_END,     // $
     S_COUNT,   // Count of terminals
     S_EXPR,    // E
@@ -69,7 +69,7 @@ const char precedence_table[S_COUNT][S_COUNT] = {
 // clang-format on
 
 
-// @brief Initialize the stack with capacity set with STACK_INITIAL_CAPACITY
+// @brief Initializes the stack with capacity set with STACK_INITIAL_CAPACITY
 void initStack(Stack *stack) {
     stack->capacity = STACK_INITIAL_CAPACITY;
     stack->count = 0;
@@ -169,6 +169,7 @@ Symbol tokenToSymbol(void) {
     case TOKEN_NOT:
         return S_UNARY;
 
+    case TOKEN_PLUS:
     case TOKEN_MINUS:
         switch (previous.type) {
         case TOKEN_ID:
@@ -187,7 +188,6 @@ Symbol tokenToSymbol(void) {
     case TOKEN_DIV:
         return S_MUL;
 
-    case TOKEN_PLUS:
     case TOKEN_CONCATENATION:
         return S_ADD;
 
@@ -312,11 +312,14 @@ void parse_expression(void) {
         case '<':
             insertMark(&stack, top_terminal);
 
-            // TODO: maybe a bit loose definition of calling a function
-            // Need to discsuc with others
             if (current.type == TOKEN_ID && next.type == TOKEN_LPAREN) {
                 parse_function_call();
                 pushStack(&stack, S_OPERAND);
+
+            } else if (current.type == TOKEN_LIST && next.type == TOKEN_LPAREN) {
+                parse_list_literal();
+                pushStack(&stack, S_OPERAND);
+
             } else {
                 pushStack(&stack, input);
                 next_token();
