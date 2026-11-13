@@ -150,3 +150,12 @@ void NodeListAppend(NodeList *ptr, Node *node) {
     ptr->list[ptr->count] = node;
     ptr->count++;
 }
+
+Type *TypeInit(int line) {
+    Type *type = malloc(sizeof(Type));
+    if (!type) {
+        error_exit(ERR_INTERNAL, line, "Memory allocation error in TypeInit");
+    }
+
+    return type;
+}

@@ -285,7 +285,7 @@ bool hasOpenParen(Stack *stack) {
 
 // @brief Parses one expression using the precedence table
 // Stops at the first token that is not part of an expression
-void parse_expression(void) {
+Node *parse_expression(void) {
     Stack stack;
     initStack(&stack);
     pushStack(&stack, S_END);
@@ -341,4 +341,5 @@ void parse_expression(void) {
     }
 
     freeStack(&stack);
+    return NULL;
 }

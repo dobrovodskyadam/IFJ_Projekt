@@ -195,10 +195,15 @@ struct Node {
     } data;
 };
 
+// Core functions for AST and NodeList
 Node *ASTNewNode(NodeKind kind, unsigned int line);
 void ASTFree(Node *ptr);
 void NodeListInit(NodeList *ptr);
 void NodeListFree(NodeList *ptr);
 void NodeListAppend(NodeList *ptr, Node *node);
+Type *TypeInit(int line);
+
+// Helper function for debugging
+void ASTprint(Node *root);
 
 #endif

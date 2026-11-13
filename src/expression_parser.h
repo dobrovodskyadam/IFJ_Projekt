@@ -9,12 +9,13 @@
 #ifndef EXPRESSION_PARSER_H
 #define EXPRESSION_PARSER_H
 
+#include "ast.h"
 #include "scanner.h"
 
 extern Token previous, current, next;
 
 #define STACK_INITIAL_CAPACITY 64
 
-void parse_expression(void);
+Node *parse_expression(void);
 
 #endif // EXPRESSION_PARSER_H
