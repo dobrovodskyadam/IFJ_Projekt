@@ -26,12 +26,12 @@ typedef enum {
     NODE_VARIABLE_DECLARATION,
     NODE_ASSIGN,
     NODE_IF_STATEMENT,
+    NODE_IF_VALUE,
     NODE_FOR_CYCLE,
     NODE_WHILE_CYCLE,
     NODE_RETURN,
     NODE_BINARY_OPERATOR,
     NODE_UNARY_OPERATOR,
-    NODE_IF_VALUE,
     NODE_LIST_LITERAL,
     NODE_EXPRESSION,
     NODE_FUNCTION_CALL,
@@ -204,6 +204,8 @@ void NodeListAppend(NodeList *ptr, Node *node);
 Type *TypeInit(int line);
 
 // Helper function for debugging
-void ASTprint(Node *root);
+void ASTprint(Node *root, int indent);
+void TypePrint(const Type *type);
+void PrintIndent(int depth);
 
 #endif

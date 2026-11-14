@@ -781,6 +781,10 @@ int main(void) {
         return 1;
     }
 
+    #ifdef DEBUG_MSG
+    ASTprint(root, 0);
+    #endif
+    
     ASTFree(root);
     return 0;
 }
