@@ -125,6 +125,9 @@ void getToken (Token *token, ScannerData *scanner) {
                         state = STATE_INDENT;
                     } else if (c == '\n') {
                         state = STATE_START;
+                    } else if (c == '\t') {
+                        state = STATE_INDENT;
+                        has_tab = 1;
                     } else {
                         ungetc(c, stdin);
                         state = STATE_INDENT;
@@ -190,7 +193,7 @@ void getToken (Token *token, ScannerData *scanner) {
                 } else if (c == EOF) {
                     token->type = TOKEN_EOF;
                     token_found = 1;
-                } else if (c == ' ') {
+                } else if (isspace(c)) {
                     state = STATE_START;
                 } else if (c == ';') {
                     token->type = TOKEN_SEPARATOR;
@@ -203,9 +206,6 @@ void getToken (Token *token, ScannerData *scanner) {
                     if (!addChar(&token_buffer, c)) {
                         state = STATE_ERROR_MEMORY;
                     }
-                } else if (c == '\t') {
-                    has_tab = 1;
-                    state = STATE_INDENT;
                 } else {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
