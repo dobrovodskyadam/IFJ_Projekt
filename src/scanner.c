@@ -724,8 +724,12 @@ void getToken (Token *token, ScannerData *scanner) {
 
             case STATE_COMMENT:
                 if (c == '\n') {
-                    ungetc(c, stdin);
-                    state = STATE_START;
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
+                } else if (c == EOF) {
+                    token->type = TOKEN_EOF;
+                    token_found = 1;
                 } else {
                     state = STATE_COMMENT;
                 }
@@ -789,10 +793,22 @@ void getToken (Token *token, ScannerData *scanner) {
             case STATE_COMMENT_NESTING_AFTER:
                 comment_new_line = 0;
                 if (c == '\n') {
-                    ungetc(c, stdin);
-                    state = STATE_START;
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
                 } else if (isspace(c)) {
                     state = STATE_COMMENT_NESTING_AFTER;
+                } else if (c == '/') {
+                    int next_c = fgetc(stdin);
+                    if (next_c == '/') {
+                        state = STATE_COMMENT;
+                    } else if (next_c == '*') {
+                        comment_nesting++;
+                        state = STATE_COMMENT_NESTING;
+                    } else {
+                        token_found = 1;
+                        token->type = TOKEN_ERROR;
+                    }
                 } else if (c == EOF) {
                     token_found = 1;
                     token->type = TOKEN_EOF;
