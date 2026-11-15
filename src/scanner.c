@@ -481,7 +481,7 @@ void getToken (Token *token, ScannerData *scanner) {
                         if (!addChar(&token_buffer, c)) {
                             state = STATE_ERROR_MEMORY;
                         }
-                    } else if (c == '.' && (strcmp(token_buffer.str, "ifj26")) == 0) {
+                    } else if (c == '.' && token_buffer.length == 5 && (strncmp(token_buffer.str, "ifj26", 5)) == 0) {
                         int next_c = fgetc(stdin);
                         if (next_c == '*') {
                             token->type = TOKEN_IFJ;
