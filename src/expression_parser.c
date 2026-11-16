@@ -1,10 +1,10 @@
-// @file expression_parser.c
-// @brief Precedence parser for expressions
-// @date 07-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file expression_parser.c
+/// @brief Precedence parser for expressions
+/// @date 07-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 #include "expression_parser.h"
 #include "ast.h"
@@ -49,13 +49,13 @@ typedef struct AStack {
 } Stack;
 
 
-// @brief  Precedence Table
-// row     - topmost terminal on the stack
-// columnt - current input symbol
-// <       - shift with mark
-// =       - shift without mark
-// >       - reduce
-// ' '     - syntax error
+/// @brief  Precedence Table
+/// row     - topmost terminal on the stack
+/// columnt - current input symbol
+/// <       - shift with mark
+/// =       - shift without mark
+/// >       - reduce
+/// ' '     - syntax error
 const char precedence_table[S_COUNT][S_COUNT] = {
     //                 i    (    )    .    !    *    +    >   ==   &&   ||   to    $
     [S_OPERAND]  =  { ' ', ' ', '>', '>', ' ', '>', '>', '>', '>', '>', '>', '>', '>'},
@@ -75,7 +75,7 @@ const char precedence_table[S_COUNT][S_COUNT] = {
 // clang-format on
 
 
-// @brief Initializes the stack with capacity set with STACK_INITIAL_CAPACITY
+/// @brief Initializes the stack with capacity set with STACK_INITIAL_CAPACITY
 void initStack(Stack *stack) {
     stack->capacity = STACK_INITIAL_CAPACITY;
     stack->count = 0;
@@ -85,12 +85,12 @@ void initStack(Stack *stack) {
     }
 }
 
-// @brief Free stack from memory
+/// @brief Free stack from memory
 void freeStack(Stack *stack) {
     free(stack->items);
 }
 
-// @brief Push an element to stack
+/// @brief Push an element to stack
 void pushStack(Stack *stack, StackItem symbol) {
     if (stack->count == stack->capacity) {
         stack->capacity *= 2;
@@ -105,19 +105,19 @@ void pushStack(Stack *stack, StackItem symbol) {
     stack->count++;
 }
 
-// @brief Pop topmost element and return it
+/// @brief Pop topmost element and return it
 StackItem popStack(Stack *stack) {
     stack->count--;
     return stack->items[stack->count];
 }
 
-// @brief Predicate whether stack is empty
+/// @brief Predicate whether stack is empty
 bool isEmptyStack(Stack *stack) {
     return stack->count == 0;
 }
 
-// @brief Returns the first terminal on the stack
-// Skips S_MARK and S_EXPR
+/// @brief Returns the first terminal on the stack
+/// Skips S_MARK and S_EXPR
 StackItem topTerminal(Stack *stack) {
     int i = stack->count - 1;
     while (stack->items[i].symbol >= S_COUNT) {
@@ -127,7 +127,7 @@ StackItem topTerminal(Stack *stack) {
     return stack->items[i];
 }
 
-// @brief Inserts S_MARK right after the given terminal
+/// @brief Inserts S_MARK right after the given terminal
 void insertMark(Stack *stack, StackItem terminal) {
     Stack temp;
     initStack(&temp);
@@ -146,13 +146,13 @@ void insertMark(Stack *stack, StackItem terminal) {
     freeStack(&temp);
 }
 
-// @brief Predicate whether the end condition is met
-// End condition: $E
+/// @brief Predicate whether the end condition is met
+/// End condition: $E
 bool isExpressionFinished(Stack *stack) {
     return stack->count == 2 && stack->items[0].symbol == S_END && stack->items[1].symbol == S_EXPR;
 }
 
-// @brief Converts the current token to a symbol
+/// @brief Converts the current token to a symbol
 Symbol tokenToSymbol(void) {
     switch (current.type) {
     case TOKEN_ID:
@@ -223,12 +223,12 @@ Symbol tokenToSymbol(void) {
     }
 }
 
-// @brief Reduces the handle to S_EXPR
-// Rule
-// E -> E op E    New Binary Operator
-// E -> unary E   New Unary Operator
-// E -> i         New Leaf
-// E -> ( E )     Parentheses are skipped in creation of AST
+/// @brief Reduces the handle to S_EXPR
+/// Rule
+/// E -> E op E    New Binary Operator
+/// E -> unary E   New Unary Operator
+/// E -> i         New Leaf
+/// E -> ( E )     Parentheses are skipped in creation of AST
 void reduce(Stack *stack) {
     // Find the topmost mark, the handle starts right after it
     int mark_idx = stack->count - 1;
@@ -298,7 +298,7 @@ void reduce(Stack *stack) {
     pushStack(stack, expr);
 }
 
-// @brief Predicate whether there is S_LPAREN on the stack
+/// @brief Predicate whether there is S_LPAREN on the stack
 bool hasOpenParen(Stack *stack) {
     for (int i = 0; i < stack->count; i++) {
         if (stack->items[i].symbol == S_LPAREN) {
@@ -308,7 +308,7 @@ bool hasOpenParen(Stack *stack) {
     return false;
 }
 
-// @brief
+/// @brief
 Node *LeafNode(void) {
     Node *ptr = NULL;
 
@@ -351,8 +351,8 @@ Node *LeafNode(void) {
     return ptr;
 }
 
-// @brief Parses one expression using the precedence table
-// Stops at the first token that is not part of an expression
+/// @brief Parses one expression using the precedence table
+/// Stops at the first token that is not part of an expression
 Node *parse_expression(void) {
     // Init stack
     Stack stack;
