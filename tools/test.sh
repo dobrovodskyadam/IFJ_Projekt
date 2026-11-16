@@ -9,10 +9,10 @@
 
 BASIC=(examples/basic/*.scala)
 EXTENSIONS=(examples/extensions/*.scala)
-CORRECT_SYNTAX=(tests/extensive/correct-syntax/*.scala)
-INCORRECT_SYNTAX=(tests/extensive/incorrect-syntax/*.scala)
+CORRECT_PROGRAM=(tests/extensive/correct_test/*.scala)
+INCORRECT_PROGRAM=(tests/extensive/incorrect_test/*.scala)
 
-for file in "${CORRECT_SYNTAX[@]}"; do
+for file in "${INCORRECT_PROGRAM[@]}"; do
     output=$(./ifj26 < "$file" 2>&1)
 
     code=$?

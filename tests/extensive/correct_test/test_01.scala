@@ -16,6 +16,8 @@ def hoo(): Unit =
   val i: Double = 10.1
   val j: Double = 11.1
 
+  i = i + 1
+
   if (i > 12 && j > 15) then
     printLine("Ahojda")
   else
