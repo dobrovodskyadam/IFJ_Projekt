@@ -12,21 +12,26 @@
 
 #include <stdbool.h>
 
-#define MAX_ITEM_ID    1024
-#define MAX_HTAB_ITEMS 1031 // Maximum of hashtable items, should be prime number
+#define MAX_HTAB_ITEMS 101 // Maximum of hashtable items, should be prime number
 
-/// @param VAR Variable
-/// @param FUN Function
-/// @param INT Integer
-/// @param DUB Double
-typedef enum { VAR, FUN, INT, DUB } item_type;
+struct Node;
 
 /// @param NOT Never used item
 /// @param USE Item currently in use
 /// @param DEL Preveously used, now deleted
 typedef enum { NOT, USE, DEL } item_used;
 
-typedef struct htab_item htab_item_t;
+/// @brief Item of hashtable, a single symbol
+/// @param id     Name of the symbol, points into the AST
+/// @param decl   Declaration node (FUNCTION_DEF, PARAMETER or VARIABLE_DECLARATION)
+/// @param id_cnt State of id_cnt from symtable in moment of adding (unique number)
+/// @param used   NOT == never used, USE == used, DEL == deleted
+typedef struct htab_item {
+    const char *id;
+    struct Node *decl;
+    unsigned id_cnt;
+    item_used used;
+} htab_item_t;
 
 typedef htab_item_t *htab_t;
 
@@ -35,7 +40,7 @@ unsigned hash_func(const char *id);
 
 htab_t htab_init(void);
 
-bool hash_item_add(htab_t tab, char *id, item_type type, bool modif, int id_cnt);
+bool hash_item_add(htab_t tab, char *id, struct Node *decl, int id_cnt);
 htab_item_t *hash_item_lookup(htab_t tab, char *id);
 void hash_item_del(htab_t tab, char *id);
 
