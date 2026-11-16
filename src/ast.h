@@ -1,10 +1,10 @@
-// @file ast.h
-// @brief Header file of Abstract Syntax Tree with all nodes types and functions declarations
-// @date 12-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file ast.h
+/// @brief Header file of Abstract Syntax Tree with all nodes types and functions declarations
+/// @date 12-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 // clang-format off
 
 #ifndef AST_H
@@ -17,7 +17,7 @@
 
 typedef struct Node Node;
 
-// @brief Represents the Nodes purpose
+/// @brief Represents the Nodes purpose
 typedef enum {
     NODE_PROGRAM,
     NODE_FUNCTION_DEF,
@@ -43,7 +43,7 @@ typedef enum {
     NODE_UNIT,
 } NodeKind;
 
-// @brief Represents all possible datatypes for our language
+/// @brief Represents all possible datatypes for our language
 typedef enum {
     TYPE_UNKNOWN,
     TYPE_INT,
@@ -52,21 +52,22 @@ typedef enum {
     TYPE_BOOL,
     TYPE_UNIT,
     TYPE_LIST,
+    TYPE_ANY,
 } DataType;
 
 
 // Core blocks
 
-// @brief Reprents the data type of an statement, variable, expression, ...
-// Is implemented with additional elem pointer for the item type of List[Int]
-//
-// Note: elem is used only for TYPE_LIST, otherwise NULL
-//
-// Example:
-// List(2)
-// .kind = NODE_LIST_LITERAL
-// .type = List[Int] (after semantic analysis)
-// .data.list.items[0] -> .kind = NODE_INT, .data.int_val = 2
+/// @brief Reprents the data type of an statement, variable, expression, ...
+/// Is implemented with additional elem pointer for the item type of List[Int]
+///
+/// Note: elem is used only for TYPE_LIST, otherwise NULL
+///
+/// Example:
+/// List(2)
+/// .kind = NODE_LIST_LITERAL
+/// .type = List[Int] (after semantic analysis)
+/// .data.list.items[0] -> .kind = NODE_INT, .data.int_val = 2
 
 typedef struct Type {
     DataType kind;
@@ -160,11 +161,11 @@ typedef struct {
 } ListData;
 
 
-// @brief  Universal Node
-// kind     = what kind of purpose does the node fulfill (see NodeKind enum)
-// line     = line in the source where the construct starts
-// type     = type of the value the expression produces (e.g. 1 + a is Int or Double, depending on a), filled later by semantic analysis, until then we assign TYPE_UNKNOWN
-// data     = fields specific to the kind
+/// @brief  Universal Node
+/// @param kind = what kind of purpose does the node fulfill (see NodeKind enum)
+/// @param line = line in the source where the construct starts
+/// @param type = type of the value the expression produces (e.g. 1 + a is Int or Double, depending on a), filled later by semantic analysis, until then we assign TYPE_UNKNOWN
+/// @param data = fields specific to the kind
 struct Node {
     NodeKind kind;
     unsigned line;
@@ -202,9 +203,11 @@ void NodeListInit(NodeList *ptr);
 void NodeListFree(NodeList *ptr);
 void NodeListAppend(NodeList *ptr, Node *node);
 Type *TypeInit(int line);
+void TypeFreeAll(void);
 
 // Helper function for debugging
 void ASTprint(Node *root, int indent);
+const char *DataTypeToString(DataType kind);
 void TypePrint(const Type *type);
 void PrintIndent(int depth);
 

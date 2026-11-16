@@ -1,17 +1,22 @@
-// @file ast.c
-// @brief
-// @date 12-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file ast.c
+/// @brief
+/// @date 12-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 #include "ast.h"
 #include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-// @brief
+// Helper list for all type allocations
+static Type **all_types;
+static unsigned int all_types_capacity, all_types_count = 0;
+
+/// @brief
 Node *ASTNewNode(NodeKind kind, unsigned int line) {
     Node *node = calloc(1, sizeof(Node));
     if (!node) {
@@ -25,7 +30,7 @@ Node *ASTNewNode(NodeKind kind, unsigned int line) {
     return node;
 };
 
-// @brief
+/// @brief
 void ASTFree(Node *ptr) {
     if (ptr == NULL) {
         return;
@@ -121,14 +126,14 @@ void ASTFree(Node *ptr) {
     free(ptr);
 }
 
-// @brief
+/// @brief
 void NodeListInit(NodeList *ptr) {
     ptr->list = NULL;
     ptr->capacity = 0;
     ptr->count = 0;
 }
 
-// @brief
+/// @brief
 void NodeListFree(NodeList *ptr) {
     for (unsigned int i = 0; i < ptr->count; i++) {
         ASTFree(ptr->list[i]);
@@ -136,7 +141,7 @@ void NodeListFree(NodeList *ptr) {
     free(ptr->list);
 }
 
-// @brief
+/// @brief
 void NodeListAppend(NodeList *ptr, Node *node) {
     if (ptr->capacity == ptr->count) {
         unsigned int new_capacity = ptr->capacity == 0 ? INITIAL_LIST_CAPACITY : ptr->capacity * 2;
@@ -157,18 +162,48 @@ void NodeListAppend(NodeList *ptr, Node *node) {
     ptr->count++;
 }
 
-// @brief
+/// @brief
 Type *TypeInit(int line) {
     Type *type = malloc(sizeof(Type));
+
     if (!type) {
         error_exit(ERR_INTERNAL, line, "Memory allocation error in TypeInit");
     }
 
+    if (all_types_capacity == all_types_count) {
+        unsigned int new_capacity = all_types_capacity == 0 ? 8 : all_types_capacity * 2;
+        if (new_capacity < all_types_capacity) {
+            error_exit(ERR_INTERNAL, line, "integer overflow in TypeInit");
+        }
+
+        Type **temp = realloc(all_types, new_capacity * sizeof(Type *));
+        if (!temp) {
+            error_exit(ERR_INTERNAL, line, "memory allocation error in TypeInit");
+        }
+        all_types_capacity = new_capacity;
+        all_types = temp;
+    }
+
+    all_types[all_types_count] = type;
+    all_types_count++;
+
     return type;
 }
 
+/// @brief Frees every Type allocated by TypeInit
+void TypeFreeAll(void) {
+    for (unsigned int i = 0; i < all_types_count; i++) {
+        free(all_types[i]);
+    }
+    free(all_types);
+
+    all_types = NULL;
+    all_types_count = 0;
+    all_types_capacity = 0;
+}
+
 // clang-format off
-// @brief
+/// @brief
 static const char *kind_names[] = {
     [NODE_PROGRAM]              = "PROGRAM",
     [NODE_FUNCTION_DEF]         = "FUNCTION_DEF",
@@ -195,66 +230,61 @@ static const char *kind_names[] = {
 };
 // clang-format on
 
-// @brief Helper function for printing NodeKind
+/// @brief Helper function for printing NodeKind
 const char *NodeKindToString(NodeKind kind) {
     return kind_names[kind];
 }
 
-// @brief Helper function for printing Type
+// clang-format off
+
+/// @brief Helper function for converting DataType to String
+const char *DataTypeToString(DataType kind) {
+    static const char *type_names[] = {
+        [TYPE_UNKNOWN] = "Unknown",
+        [TYPE_INT]     = "Int",
+        [TYPE_DOUBLE]  = "Double",
+        [TYPE_STRING]  = "String",
+        [TYPE_BOOL]    = "Boolean",
+        [TYPE_UNIT]    = "Unit",
+        [TYPE_LIST]    = "List",
+        [TYPE_ANY]     = "Any",
+    };
+    return type_names[kind];
+}
+// clang-format on
+
+/// @brief
 void TypePrint(const Type *type) {
-    switch (type->kind) {
-    case TYPE_UNKNOWN:
-        fprintf(stderr, "Unknown");
-        break;
-
-    case TYPE_INT:
-        fprintf(stderr, "Int");
-        break;
-
-    case TYPE_DOUBLE:
-        fprintf(stderr, "Double");
-        break;
-
-    case TYPE_STRING:
-        fprintf(stderr, "String");
-        break;
-
-    case TYPE_BOOL:
-        fprintf(stderr, "Boolean");
-        break;
-
-    case TYPE_UNIT:
-        fprintf(stderr, "Unit");
-        break;
-
-    case TYPE_LIST:
+    if (type->kind == TYPE_LIST) {
         fprintf(stderr, "List[");
         TypePrint(type->elem);
         fprintf(stderr, "]");
-        break;
+    } else {
+        fprintf(stderr, "%s", DataTypeToString(type->kind));
     }
 }
 
-// @brief
+
+/// @brief
 void PrintIndent(int depth) {
     for (int i = 0; i < depth; i++) {
         fprintf(stderr, "  ");
     }
 }
 
-// @brief
+/// @brief
 static void NodeListPrint(const NodeList *list, int indent) {
     for (unsigned int i = 0; i < list->count; i++) {
         ASTprint(list->list[i], indent);
     }
 }
 
-// @brief
+/// @brief
 static const char *boolToString(bool value) {
     return value ? "True" : "False";
 }
 
-// @brief
+/// @brief
 void ASTprint(Node *root, int indent) {
     PrintIndent(indent);
     indent++;

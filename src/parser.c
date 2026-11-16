@@ -1,10 +1,10 @@
-// @file parser.c
-// @brief
-// @date 23-10-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file parser.c
+/// @brief
+/// @date 23-10-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 // TODO: Add brief desriptions to the functions
 
@@ -13,6 +13,7 @@
 #include "error.h"
 #include "expression_parser.h"
 #include "scanner.h"
+#include "semantic.h"
 #include "symtable.h"
 
 #include <stdbool.h>
@@ -22,13 +23,13 @@ ScannerData scanner;
 Token previous, current, next;
 
 
-// @brief
+/// @brief
 void fill_tokens(void) {
     next_token();
     next_token();
 }
 
-// @brief
+/// @brief
 void next_token(void) {
     previous = current;
     current = next;
@@ -40,19 +41,19 @@ void next_token(void) {
     }
 }
 
-// @brief
+/// @brief
 void syntax_error(const char *expected) {
     if (previous.line == 0) {
-        error_exit(ERR_SYNTAX, current.line, "Expected %s, got %s", expected,
+        error_exit(ERR_SYNTAX, current.line, "expected %s, got %s", expected,
                    tokenTypeName(current.type));
     }
 
-    error_exit(ERR_SYNTAX, current.line, "Expected %s after %s, got %s", expected,
+    error_exit(ERR_SYNTAX, current.line, "expected %s after %s, got %s", expected,
                tokenTypeName(previous.type), tokenTypeName(current.type));
 }
 
 
-// @brief
+/// @brief
 void expect(TokenType type) {
     if (current.type != type) {
         syntax_error(tokenTypeName(type));
@@ -68,7 +69,7 @@ char *expect_id(void) {
     return name;
 }
 
-// @brief
+/// @brief
 bool is_expression_start(TokenType type) {
     switch (type) {
     case TOKEN_ID:
@@ -87,7 +88,7 @@ bool is_expression_start(TokenType type) {
     }
 }
 
-// @brief Parse each nonterminal
+/// @brief Parse each nonterminal
 Node *parse_start(void) {
     Node *ptr = ASTNewNode(NODE_PROGRAM, current.line);
     NodeListInit(&ptr->data.program_data.definitions);
@@ -101,7 +102,7 @@ Node *parse_start(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_list_def(NodeList *definitions) {
     if (current.type == TOKEN_MAIN || current.type == TOKEN_DEF) {
         NodeListAppend(definitions, parse_def());
@@ -113,7 +114,7 @@ void parse_list_def(NodeList *definitions) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_def(void) {
     Node *ptr = ASTNewNode(NODE_FUNCTION_DEF, current.line);
 
@@ -130,7 +131,7 @@ Node *parse_def(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 bool parse_opt_main(void) {
     switch (current.type) {
     case TOKEN_MAIN:
@@ -147,7 +148,7 @@ bool parse_opt_main(void) {
     }
 }
 
-// @brief
+/// @brief
 void parse_opt_main_space(void) {
     switch (current.type) {
     case TOKEN_EOL:
@@ -162,7 +163,7 @@ void parse_opt_main_space(void) {
     }
 }
 
-// @brief
+/// @brief
 Type parse_opt_type(void) {
     Type type;
     type.elem = NULL;
@@ -184,7 +185,7 @@ Type parse_opt_type(void) {
     return type;
 }
 
-// @brief
+/// @brief
 NodeList parse_list_params(void) {
     NodeList params;
     NodeListInit(&params);
@@ -205,7 +206,7 @@ NodeList parse_list_params(void) {
     return params;
 }
 
-// @brief
+/// @brief
 Node *parse_parameter(void) {
     Node *ptr = ASTNewNode(NODE_PARAMETER, current.line);
 
@@ -216,7 +217,7 @@ Node *parse_parameter(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_more_list_params(NodeList *params) {
     switch (current.type) {
     case TOKEN_COMMA:
@@ -245,7 +246,7 @@ Node *parse_function_body(void) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_block(void) {
     Node *ptr = ASTNewNode(NODE_BLOCK, current.line);
     NodeListInit(&ptr->data.block_data.statements);
@@ -257,7 +258,7 @@ Node *parse_block(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_if_or_expr(void) {
     Node *ptr = NULL;
 
@@ -273,7 +274,7 @@ Node *parse_if_or_expr(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Type parse_type(void) {
     Type type;
     type.kind = TYPE_UNKNOWN, type.elem = NULL;
@@ -322,7 +323,7 @@ Type parse_type(void) {
     return type;
 }
 
-// @brief
+/// @brief
 Node *parse_if_statement(void) {
     Node *ptr = ASTNewNode(NODE_IF_STATEMENT, current.line);
     expect(TOKEN_IF);
@@ -333,14 +334,14 @@ Node *parse_if_statement(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_statement_list(NodeList *statements) {
     NodeListAppend(statements, parse_statement());
     parse_statement_list_rest(statements);
 }
 
-// TODO
-// @brief
+/// TODO
+/// @brief
 void parse_statement_end(void) {
     if (current.type == TOKEN_EOL || current.type == TOKEN_SEPARATOR) {
         next_token();
@@ -349,7 +350,7 @@ void parse_statement_end(void) {
     }
 }
 
-// @brief
+/// @brief
 void parse_st_then_part(Node *ptr) {
     if (current.type == TOKEN_EOL) {
         next_token();
@@ -371,7 +372,7 @@ void parse_st_then_part(Node *ptr) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_statement(void) {
     Node *ptr = NULL;
 
@@ -418,7 +419,7 @@ Node *parse_statement(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_statement_list_rest(NodeList *statements) {
     if (current.type == TOKEN_DEDENT) {
         return;
@@ -428,7 +429,7 @@ void parse_statement_list_rest(NodeList *statements) {
     parse_statement_list_rest(statements);
 }
 
-// @brief
+/// @brief
 Node *parse_st_opt_else(void) {
     if (current.type == TOKEN_ELSE) {
         expect(TOKEN_ELSE);
@@ -438,7 +439,7 @@ Node *parse_st_opt_else(void) {
     return NULL;
 }
 
-// @brief
+/// @brief
 Node *parse_st_after_inline_part(void) {
     Node *ptr = NULL;
 
@@ -464,7 +465,7 @@ Node *parse_st_after_inline_part(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_variable_declaration(void) {
     Node *ptr = ASTNewNode(NODE_VARIABLE_DECLARATION, current.line);
 
@@ -477,7 +478,7 @@ Node *parse_variable_declaration(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_assignment(void) {
     Node *ptr = ASTNewNode(NODE_ASSIGN, current.line);
     ptr->data.assign_data.name = expect_id();
@@ -487,7 +488,7 @@ Node *parse_assignment(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_return(void) {
     Node *ptr = ASTNewNode(NODE_RETURN, current.line);
     expect(TOKEN_RETURN);
@@ -496,7 +497,7 @@ Node *parse_return(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_while_statement(void) {
     Node *ptr = ASTNewNode(NODE_WHILE_CYCLE, current.line);
 
@@ -509,7 +510,7 @@ Node *parse_while_statement(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_for_statement(void) {
     Node *ptr = ASTNewNode(NODE_FOR_CYCLE, current.line);
 
@@ -522,7 +523,7 @@ Node *parse_for_statement(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_value_or_expr(void) {
     Node *ptr = NULL;
 
@@ -542,7 +543,7 @@ Node *parse_value_or_expr(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 bool parse_var_or_val(void) {
     switch (current.type) {
     case TOKEN_VAL:
@@ -557,7 +558,7 @@ bool parse_var_or_val(void) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_return_argument(void) {
     switch (current.type) {
     case TOKEN_EOL:
@@ -574,7 +575,7 @@ Node *parse_return_argument(void) {
     }
 }
 
-// @brief
+/// @brief
 void parse_for_header(Node *ptr) {
     switch (current.type) {
     case TOKEN_ID:
@@ -593,7 +594,7 @@ void parse_for_header(Node *ptr) {
     }
 }
 
-// @brief
+/// @brief
 void parse_list_guards(NodeList *guards) {
     switch (current.type) {
     case TOKEN_IF:
@@ -608,20 +609,20 @@ void parse_list_guards(NodeList *guards) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_guard(void) {
     expect(TOKEN_IF);
     return parse_expression();
 }
 
-// @brief
+/// @brief
 void parse_generator(Node *ptr) {
     ptr->data.for_data.name = expect_id();
     expect(TOKEN_GEN_ARROW);
     ptr->data.for_data.range = parse_expression();
 }
 
-// @brief
+/// @brief
 Node *parse_st_else_part(void) {
     Node *ptr = NULL;
 
@@ -642,7 +643,7 @@ Node *parse_st_else_part(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_if_value(void) {
     Node *ptr = ASTNewNode(NODE_IF_VALUE, current.line);
     expect(TOKEN_IF);
@@ -652,7 +653,7 @@ Node *parse_if_value(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_value_then_part(Node *ptr) {
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
@@ -668,7 +669,7 @@ void parse_value_then_part(Node *ptr) {
 }
 
 
-// @brief
+/// @brief
 Node *parse_value_after_inline_part(void) {
     Node *ptr = NULL;
 
@@ -691,7 +692,7 @@ Node *parse_value_after_inline_part(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_value_else_part(void) {
     Node *ptr = NULL;
 
@@ -710,7 +711,7 @@ Node *parse_value_else_part(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse_function_call(void) {
     Node *ptr = ASTNewNode(NODE_FUNCTION_CALL, current.line);
     ptr->data.call_data.name = expect_id();
@@ -721,7 +722,7 @@ Node *parse_function_call(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 void parse_list_arguments(NodeList *arguments) {
     if (current.type == TOKEN_RPAREN) {
         return;
@@ -734,7 +735,7 @@ void parse_list_arguments(NodeList *arguments) {
     }
 }
 
-// @brief
+/// @brief
 void parse_more_list_arguments(NodeList *arguments) {
     switch (current.type) {
     case TOKEN_RPAREN:
@@ -749,12 +750,12 @@ void parse_more_list_arguments(NodeList *arguments) {
     }
 }
 
-// @brief
+/// @brief
 Node *parse_argument(void) {
     return parse_expression();
 }
 
-// @brief
+/// @brief
 Node *parse_list_literal(void) {
     Node *ptr = ASTNewNode(NODE_LIST_LITERAL, current.line);
     expect(TOKEN_LIST);
@@ -765,26 +766,23 @@ Node *parse_list_literal(void) {
     return ptr;
 }
 
-// @brief
+/// @brief
 Node *parse(void) {
     initScannerData(&scanner);
     fill_tokens();
     return parse_start();
 }
 
-// @brief
+/// @brief
 int main(void) {
-    Node *root;
-    root = parse();
+    Node *root = parse();
 
-    if (!root) {
-        return 1;
-    }
-
-    #ifdef DEBUG_MSG
+    #ifdef DEBUG
     ASTprint(root, 0);
     #endif
     
+    semantic_analyze(root);
     ASTFree(root);
+    TypeFreeAll();
     return 0;
 }
