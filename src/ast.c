@@ -248,6 +248,7 @@ const char *DataTypeToString(DataType kind) {
         [TYPE_UNIT]    = "Unit",
         [TYPE_LIST]    = "List",
         [TYPE_ANY]     = "Any",
+        [TYPE_RANGE]   = "Range",
     };
     return type_names[kind];
 }

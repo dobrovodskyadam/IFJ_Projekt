@@ -52,6 +52,7 @@ typedef enum {
     TYPE_BOOL,
     TYPE_UNIT,
     TYPE_LIST,
+    TYPE_RANGE,
     TYPE_ANY,
 } DataType;
 
@@ -130,6 +131,7 @@ typedef struct {
 
 typedef struct {
     char *name;
+    Type var_type;
     Node *range;
     Node *body;
     NodeList guards;

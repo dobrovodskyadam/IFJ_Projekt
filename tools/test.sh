@@ -7,18 +7,24 @@
 # @author Email: xsofkal00@stud.fit.vutbr.cz
 # Faculty of Information Technology, Brno University of Technology
 
-BASIC=(examples/basic/*.scala)
-EXTENSIONS=(examples/extensions/*.scala)
-CORRECT_PROGRAM=(tests/extensive/correct_test/*.scala)
-INCORRECT_PROGRAM=(tests/extensive/incorrect_test/*.scala)
-
-for file in "${INCORRECT_PROGRAM[@]}"; do
-    output=$(./ifj26 < "$file" 2>&1)
-
+for file in tests/extensive/correct_test/*.scala; do
+    ./ifj26 < "$file" > /dev/null 2>&1
     code=$?
+
     if [ "$code" -eq 0 ]; then
-        echo "OK  $file"
+        echo "OK    $file"
     else
-        echo "FAIL ($code) $file: $(echo "$output")"
+        echo "FAIL  $file code: $code"
+    fi
+done
+
+for file in tests/extensive/incorrect_test/*.scala; do
+    ./ifj26 < "$file" > /dev/null 2>&1
+    code=$?
+
+    if [ "$code" -eq 0 ]; then
+        echo "OK    $file"
+    else
+        echo "FAIL  $file code: $code"
     fi
 done

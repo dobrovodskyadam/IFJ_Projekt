@@ -12,7 +12,7 @@
 
 #include <stdbool.h>
 
-#define MAX_HTAB_ITEMS 101 // Maximum of hashtable items, should be prime number
+#define MAX_HTAB_ITEMS 1023 // Maximum of hashtable items
 
 struct Node;
 

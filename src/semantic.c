@@ -18,16 +18,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO
+// Implicit Int -> Float
+// Last statement of function -> return value
+// List details
+// If value
 
-// Rules and where they are checked:
-//  3  undefined variable / function    check_expression: NODE_ID, NODE_FUNCTION_CALL
-//  3  missing @main                    check_main
-//  4  redefinition                     collect_functions, VARIABLE_DECLARATION, parameters
-//  5  wrong argument count             check_call_arguments
-//  6  condition is not Boolean         check_condition (IF, WHILE, guards)
-//  6  return type mismatch             check_return_type (RETURN)
-//  7  assignment to val / parameter    check_mutable (ASSIGN)
-// 10  zero range step                  check_expression: BINARY with TOKEN_BY
+static Node *current_function;
 
 typedef struct {
     const char *name;
@@ -46,9 +43,9 @@ const BuiltIn built_in_functions[] =
         {"readLine",    TYPE_STRING, 0, NULL},
         {"readInt",     TYPE_INT,    0, NULL},
         {"readDouble",  TYPE_DOUBLE, 0, NULL},
+        {"readBoolean", TYPE_BOOL,   0, NULL},
         {"toStr",       TYPE_STRING, 1, (DataType[]){TYPE_ANY}},
         {"toInt",       TYPE_INT,    1, (DataType[]){TYPE_DOUBLE}},
-        {"toStr",       TYPE_STRING, 1, (DataType[]){TYPE_ANY}},
         {"strLength",   TYPE_INT,    1, (DataType[]){TYPE_STRING}},
         {"subStr",      TYPE_STRING, 3, (DataType[]){TYPE_STRING, TYPE_INT, TYPE_INT}},
         {"ord",         TYPE_INT,    2, (DataType[]){TYPE_STRING, TYPE_INT}},
@@ -65,6 +62,9 @@ Type declaration_to_type(Node *node) {
 
     case NODE_PARAMETER:
         return node->data.param_data.type;
+
+    case NODE_FOR_CYCLE:
+        return node->data.for_data.var_type;
 
     default: {
         Type temp = {TYPE_UNKNOWN, NULL};
@@ -98,6 +98,27 @@ char *copy_string(const char *str) {
 
     strcpy(copy, str);
     return copy;
+}
+
+/// @brief Checks whether the type is Int or Double
+bool is_numeric(Type item) {
+    return (item.kind == TYPE_INT || item.kind == TYPE_DOUBLE);
+}
+
+/// @brief
+Type numeric_result(Type a, Type b) {
+    Type result = {TYPE_INT, NULL};
+
+    if (a.kind == TYPE_DOUBLE || b.kind == TYPE_DOUBLE) {
+        result.kind = TYPE_DOUBLE;
+    }
+    return result;
+}
+
+/// TODO
+Type result_type(symtab_t *symtable, Node *node) {
+    Type temp = {TYPE_UNKNOWN, NULL};
+    return temp;
 }
 
 /// @brief
@@ -231,15 +252,109 @@ Type check_expression(symtab_t *symtable, Node *node) {
         break;
     }
 
-    case NODE_BINARY_OPERATOR:
-        // TODO
-        if (node->data.bin_op_data.op == TOKEN_DOT) {
-            Type type = check_expression(symtable, node->data.bin_op_data.left);
-        } else {
-            Type type_left = check_expression(symtable, node->data.bin_op_data.left);
-            Type type_right = check_expression(symtable, node->data.bin_op_data.right);
+    case NODE_BINARY_OPERATOR: {
+        BinaryOpData *bin_data = &node->data.bin_op_data;
+
+        if (bin_data->op == TOKEN_DOT) {
+            // TODO
+            break;
         }
+
+        Type left = check_expression(symtable, bin_data->left);
+        Type right = check_expression(symtable, bin_data->right);
+        Type num_result = numeric_result(left, right);
+
+        switch (bin_data->op) {
+        case TOKEN_PLUS:
+            if (is_numeric(left) && is_numeric(right)) {
+                itemType = num_result;
+            } else if (left.kind == TYPE_STRING && right.kind == TYPE_STRING) {
+                itemType.kind = TYPE_STRING;
+            } else {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "operands must be either both numeric or strings");
+            }
+
+            break;
+
+        case TOKEN_MINUS:
+        case TOKEN_MUL:
+        case TOKEN_DIV:
+            if (!is_numeric(left) || !is_numeric(right)) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line, "operands must be numeric");
+            }
+
+            itemType = num_result;
+            break;
+
+        case TOKEN_LS:
+        case TOKEN_LS_EQ:
+        case TOKEN_GR:
+        case TOKEN_GR_EQ:
+            if ((is_numeric(left) && is_numeric(right)) ||
+                (left.kind == TYPE_STRING && right.kind == TYPE_STRING)) {
+                itemType.kind = TYPE_BOOL;
+            } else {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "operands must be either both numeric or strings");
+            }
+            break;
+
+        case TOKEN_EQ:
+        case TOKEN_NEQ:
+            if ((is_numeric(left) && is_numeric(right)) || type_eq(left, right)) {
+                itemType.kind = TYPE_BOOL;
+            } else {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "operands must be numeric or of the same type");
+            }
+            break;
+
+        case TOKEN_AND:
+        case TOKEN_OR:
+            if (left.kind == TYPE_BOOL && right.kind == TYPE_BOOL) {
+                itemType.kind = TYPE_BOOL;
+            } else {
+                error_exit(ERR_SEMANTIC_TYPE, node->line, "operands must be boolean");
+            }
+            break;
+
+        case TOKEN_CONCATENATION:
+            if (!type_eq(left, right) || left.kind != TYPE_LIST) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "both operands of concatenation must be list of same the same type");
+            }
+
+            itemType = left;
+            break;
+
+        case TOKEN_BY:
+            if (left.kind != TYPE_RANGE || right.kind != TYPE_INT) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "operands in by must be range and integer");
+            } else if (bin_data->right->kind == NODE_INT && bin_data->right->data.int_value == 0) {
+                error_exit(ERR_SEMANTIC_OTHER, node->line,
+                           "zero step in for cycle is not permitted");
+            }
+
+            itemType.kind = TYPE_RANGE;
+            break;
+
+        case TOKEN_UNTIL:
+        case TOKEN_TO:
+            if (left.kind != TYPE_INT || right.kind != TYPE_INT) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line, "operands in range must be integers");
+            }
+
+            itemType.kind = TYPE_RANGE;
+            break;
+
+        default:
+            break;
+        }
+
         break;
+    }
 
     case NODE_UNARY_OPERATOR: {
         Type type = check_expression(symtable, node->data.un_op_data.operand);
@@ -302,6 +417,11 @@ Type check_expression(symtab_t *symtable, Node *node) {
         break;
     }
 
+    case NODE_IF_VALUE: {
+        // TODO
+        break;
+    }
+
     default:
         break;
     }
@@ -344,13 +464,136 @@ void check_statement(symtab_t *symtable, Node *node) {
         break;
     }
 
-    // TODO:
-    case NODE_ASSIGN:
-    case NODE_IF_STATEMENT:
-    case NODE_WHILE_CYCLE:
-    case NODE_FOR_CYCLE:
-    case NODE_RETURN:
+    case NODE_ASSIGN: {
+        item_t item = get_item(symtable, node->data.assign_data.name);
+
+        if (item.scope == -1) {
+            error_exit(ERR_SEMANTIC_UNDEFINED, node->line, "undefined variable %s",
+                       node->data.assign_data.name);
+        }
+
+        switch (item.decl->kind) {
+        case NODE_VARIABLE_DECLARATION:
+            if (item.decl->data.var_decl_data.is_val) {
+                error_exit(ERR_SEMANTIC_IMMUTABLE, node->line, "assignment to value %s",
+                           node->data.assign_data.name);
+            }
+            break;
+
+        case NODE_PARAMETER:
+            error_exit(ERR_SEMANTIC_IMMUTABLE, node->line, "parameter %s is immutable",
+                       item.decl->data.param_data.name);
+            break;
+
+        case NODE_FOR_CYCLE:
+            error_exit(ERR_SEMANTIC_IMMUTABLE, node->line, "variable %s in for cycle is immutable",
+                       item.decl->data.for_data.name);
+            break;
+
+        case NODE_FUNCTION_DEF:
+            error_exit(ERR_SEMANTIC_IMMUTABLE, node->line,
+                       "cannot write into function identifier %s",
+                       item.decl->data.function_def_data.name);
+            break;
+
+        default:
+            break;
+        }
+
+        // Type checking for assign
+        Type value_type = check_expression(symtable, node->data.assign_data.value);
+        Type var_type = declaration_to_type(item.decl);
+        if (!type_eq(var_type, value_type)) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "type mismatch in assignment to %s",
+                       node->data.assign_data.name);
+        }
         break;
+    }
+
+    case NODE_IF_STATEMENT: {
+        Type condition = check_expression(symtable, node->data.if_data.condition);
+        if (condition.kind != TYPE_BOOL) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "condition is not of type boolean");
+        }
+
+        check_statement(symtable, node->data.if_data.then_part);
+
+        if (node->data.if_data.else_part) {
+            check_statement(symtable, node->data.if_data.else_part);
+        }
+
+        break;
+    }
+
+    case NODE_WHILE_CYCLE: {
+        Type condition = check_expression(symtable, node->data.while_data.condition);
+        if (condition.kind != TYPE_BOOL) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "condition is not of type boolean");
+        }
+
+        check_statement(symtable, node->data.while_data.body);
+        break;
+    }
+
+    case NODE_FOR_CYCLE: {
+        ForData *for_data = &node->data.for_data;
+        Type range_type = check_expression(symtable, for_data->range);
+
+
+        switch (range_type.kind) {
+        case TYPE_RANGE:
+            for_data->var_type.kind = TYPE_INT;
+            break;
+
+        case TYPE_LIST:
+            for_data->var_type = *range_type.elem;
+            break;
+
+        default:
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "expression is not a range");
+        }
+
+        scope_add(symtable);
+        item_add(symtable, for_data->name, node);
+
+        for (unsigned int i = 0; i < for_data->guards.count; i++) {
+            Node *guard = for_data->guards.list[i];
+            if (check_expression(symtable, guard).kind != TYPE_BOOL) {
+                error_exit(ERR_SEMANTIC_TYPE, guard->line, "guard in for cycle must be boolean");
+            }
+        }
+
+        check_statement(symtable, for_data->body);
+        scope_rm(symtable);
+        break;
+    }
+
+    case NODE_RETURN: {
+        Type expected_type = current_function->data.function_def_data.return_type;
+        Node *value = node->data.return_data.value;
+
+        // Return in function with no declared type
+        if (expected_type.kind == TYPE_UNKNOWN) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line,
+                       "return in function %s with no declared return type",
+                       current_function->data.function_def_data.name);
+        }
+
+        // bare return in non unit function
+        if (value == NULL) {
+            if (expected_type.kind != TYPE_UNIT) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "bare return must be in explicitly Unit functions");
+            }
+            break;
+        }
+
+        Type return_type = check_expression(symtable, value);
+        if (!type_eq(return_type, expected_type)) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "type mismatch in return");
+        }
+        break;
+    }
 
     default:
         check_expression(symtable, node);
@@ -369,6 +612,7 @@ void check_function(symtab_t *symtable, Node *function) {
         }
     }
 
+    current_function = function;
     check_statement(symtable, function->data.function_def_data.body);
     scope_rm(symtable);
 }
