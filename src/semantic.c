@@ -206,7 +206,11 @@ void built_in_function(symtab_t *symtable, NodeList *built_in_ast) {
 }
 
 /// @brief Adds all user functions to the global scope, before any body is checked
+/// @note  Also checks the number of main functions
 void collect_functions(symtab_t *symtable, Node *root) {
+    Node *main_definition = NULL;
+    int main_count = 0;
+
     NodeList *function_definitions = &root->data.program_data.definitions;
     for (unsigned int i = 0; i < function_definitions->count; i++) {
         Node *definition = function_definitions->list[i];
@@ -214,18 +218,8 @@ void collect_functions(symtab_t *symtable, Node *root) {
             error_exit(ERR_SEMANTIC_REDEFINITION, definition->line,
                        "redefinitions of a function %s", definition->data.function_def_data.name);
         }
-    }
-}
 
-/// @brief Checks that there is exactly one @main function and that it has no parameters
-/// @param node
-void check_main(Node *node) {
-    NodeList *function_definitions = &node->data.program_data.definitions;
-    Node *main_definition = NULL;
-    int main_count = 0;
-
-    for (unsigned int i = 0; i < function_definitions->count; i++) {
-        if (function_definitions->list[i]->data.function_def_data.is_main) {
+        if (definition->data.function_def_data.is_main) {
             main_definition = function_definitions->list[i];
             main_count++;
         }
@@ -896,9 +890,6 @@ int semantic_analyze(Node *root) {
 
     // Collect the functions signatures
     collect_functions(symtable, root);
-
-    // Check existence of only one main function
-    check_main(root);
 
     // Semantic check of all function definitions
     NodeList *function_definitions = &root->data.program_data.definitions;
