@@ -167,7 +167,7 @@ void parse_opt_main_space(void) {
 Type parse_opt_type(void) {
     Type type;
     type.elem = NULL;
-    type.kind = TYPE_UNKNOWN;
+    type.kind = TYPE_UNDEF;
 
     switch (current.type) {
     case TOKEN_COLON:
@@ -343,8 +343,17 @@ void parse_statement_list(NodeList *statements) {
 /// TODO
 /// @brief
 void parse_statement_end(void) {
-    if (current.type == TOKEN_EOL || current.type == TOKEN_SEPARATOR) {
+    if (current.type == TOKEN_EOL) {
         next_token();
+    } else if (current.type == TOKEN_SEPARATOR) {
+        next_token();
+        while (current.type == TOKEN_SEPARATOR) {
+            next_token();
+        }
+
+        if (current.type == TOKEN_EOL) {
+            next_token();
+        }
     } else {
         syntax_error("end of line or ';'");
     }
@@ -777,10 +786,10 @@ Node *parse(void) {
 int main(void) {
     Node *root = parse();
 
-    #ifdef DEBUG
+#ifdef DEBUG
     ASTprint(root, 0);
-    #endif
-    
+#endif
+
     semantic_analyze(root);
     ASTFree(root);
     TypeFreeAll();

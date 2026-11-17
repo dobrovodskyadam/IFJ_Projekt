@@ -13,11 +13,14 @@
 #include "error.h"
 #include "symtable.h"
 
-
 // Main Semantic Analyzer
+Type check_expression(symtab_t *symtable, Node *node);
+void check_statement(symtab_t *symtable, Node *node);
+void check_function(symtab_t *symtable, Node *function);
 int semantic_analyze(Node *root);
 
 // Helper Semantic Functions
 void collect_functions(symtab_t *symtable, Node *root);
+
 
 #endif // SEMANTIC_H

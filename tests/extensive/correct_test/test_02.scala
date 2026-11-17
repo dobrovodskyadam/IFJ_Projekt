@@ -43,7 +43,7 @@ def sum(list: List[Int]): Int =
   if count(mixed) < sum(mixed) then
     val a = range(count(mixed), sum(mixed))
   else
-    val a = slice(1, sum(mixed))
+    val a = mixed.slice(1,count(mixed) - 1)
 
   var count_mixed = count(mixed)
   var tail_item: Int = mixed.take(count_mixed - 1).slice(0, count_mixed / 2).tail.head

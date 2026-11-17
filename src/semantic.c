@@ -6,23 +6,16 @@
 /// @author Email: xsofkal00@stud.fit.vutbr.cz
 /// Faculty of Information Technology, Brno University of Technology
 
+// TODO: Add documentation to most of the core and helper functions
+
 #include "semantic.h"
 #include "ast.h"
 #include "error.h"
-#include "expression_parser.h"
-#include "parser.h"
 #include "scanner.h"
 #include "symtable.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-// TODO
-// Implicit Int -> Float
-// Last statement of function -> return value
-// List details
-// If value
 
 static Node *current_function;
 
@@ -35,8 +28,9 @@ typedef struct {
 
 // clang-format off
 
-/// @brief Built-in functions signatures
-/// Used for checking semantic correctness
+/// @brief Signatures of the built-in functions (name, return type, parameter types)
+/// Turned into FUNCTION_DEF nodes in the global scope
+/// Call are then checked
 const BuiltIn built_in_functions[] =
     {
         {"print",       TYPE_UNIT,   1, (DataType[]){TYPE_ANY}},
@@ -52,9 +46,39 @@ const BuiltIn built_in_functions[] =
         {"chr",         TYPE_STRING, 1, (DataType[]){TYPE_INT}},
 
 };
+
+/// @brief Rule for getting the result type
+typedef enum {
+    RESULT_ELEMENT,  // type of the list's element  (e.g. list.head)
+    RESULT_STRING,   // always String               (e.g. list.toString)
+    RESULT_LIST_INT, // always List[Int]            (e.g. range.toList)
+    RESULT_SAME,     // same type as the left side  (e.g. list.tail, drop, take, slice)
+} DotResultType;
+
+/// @brief Signature of a member used with the dot operator
+typedef struct {
+    const char *name;            // name of the member
+    DataType left;               // type the member belongs to
+    int arg_count;               // -1 = written without parentheses, otherwise number of Int arguments
+    DotResultType result_type;   // rule for the result type
+} DotOperators;
+
+/// @brief Members
+const DotOperators dot_operators[] = {
+    {"drop",     TYPE_LIST,    1, RESULT_SAME},
+    {"take",     TYPE_LIST,    1, RESULT_SAME},
+    {"slice",    TYPE_LIST,    2, RESULT_SAME},
+    {"head",     TYPE_LIST,   -1, RESULT_ELEMENT},
+    {"tail",     TYPE_LIST,   -1, RESULT_SAME},
+    {"toString", TYPE_LIST,   -1, RESULT_STRING},
+    {"toList",   TYPE_RANGE,  -1, RESULT_LIST_INT}
+};
 // clang-format on
 
-/// @brief
+
+/// @brief Returns the type of a identificator from its declaration node
+/// @param node
+/// @return Type of the variable, parameter or loop variable
 Type declaration_to_type(Node *node) {
     switch (node->kind) {
     case NODE_VARIABLE_DECLARATION:
@@ -73,7 +97,10 @@ Type declaration_to_type(Node *node) {
     }
 }
 
-/// @brief
+/// @brief Checks whether two types are equal
+/// @param a
+/// @param b
+/// @return true if equal
 bool type_eq(Type a, Type b) {
     if (a.kind != b.kind) {
         return false;
@@ -89,7 +116,9 @@ bool type_eq(Type a, Type b) {
     return true;
 }
 
-/// @brief
+/// @brief Copies a string to newly allocated memory (names of built-in functions)
+/// @param str
+/// @return Pointer to the copy
 char *copy_string(const char *str) {
     char *copy = malloc(strlen(str) + 1);
     if (!copy) {
@@ -101,11 +130,23 @@ char *copy_string(const char *str) {
 }
 
 /// @brief Checks whether the type is Int or Double
+/// @param item
+/// @return true if numeric
 bool is_numeric(Type item) {
     return (item.kind == TYPE_INT || item.kind == TYPE_DOUBLE);
 }
 
-/// @brief
+/// @brief Checks whether a type `actual` can be used where type `expected` is required
+/// @param expected
+/// @param actual
+/// @return true if equal, or Int used as Double
+bool type_compatible(Type expected, Type actual) {
+    return type_eq(expected, actual) || (expected.kind == TYPE_DOUBLE && actual.kind == TYPE_INT);
+}
+
+/// @brief Result type of an arithmetic operation on two numeric operands
+/// @param a
+/// @param b
 Type numeric_result(Type a, Type b) {
     Type result = {TYPE_INT, NULL};
 
@@ -115,13 +156,36 @@ Type numeric_result(Type a, Type b) {
     return result;
 }
 
-/// TODO
+/// @brief Checks a block, statement or expression and returns the type of its value
+/// @return Type of the last statement
 Type result_type(symtab_t *symtable, Node *node) {
-    Type temp = {TYPE_UNKNOWN, NULL};
-    return temp;
+    check_statement(symtable, node);
+
+    // If the node is block, then node = last statement
+    if (node->kind == NODE_BLOCK) {
+        NodeList *statements = &node->data.block_data.statements;
+        if (statements->count == 0) {
+            return (Type){TYPE_UNIT, NULL};
+        }
+        node = statements->list[statements->count - 1];
+    }
+
+    // Check whether the last node isn't non returning statement
+    switch (node->kind) {
+    case NODE_ASSIGN:
+    case NODE_VARIABLE_DECLARATION:
+    case NODE_WHILE_CYCLE:
+    case NODE_FOR_CYCLE:
+        return (Type){TYPE_UNIT, NULL};
+
+    // Return the type of everything else (if statement, if value, variable, literals, ...)
+    default:
+        return node->type;
+    }
 }
 
-/// @brief
+/// @brief Creates FUNCTION_DEF nodes for the built-in functions and adds them to the symtable
+/// @param built_in_ast
 void built_in_function(symtab_t *symtable, NodeList *built_in_ast) {
     unsigned int count = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
 
@@ -141,7 +205,7 @@ void built_in_function(symtab_t *symtable, NodeList *built_in_ast) {
     }
 }
 
-/// @brief
+/// @brief Adds all user functions to the global scope, before any body is checked
 void collect_functions(symtab_t *symtable, Node *root) {
     NodeList *function_definitions = &root->data.program_data.definitions;
     for (unsigned int i = 0; i < function_definitions->count; i++) {
@@ -153,9 +217,10 @@ void collect_functions(symtab_t *symtable, Node *root) {
     }
 }
 
-/// @brief
-void check_main(Node *root) {
-    NodeList *function_definitions = &root->data.program_data.definitions;
+/// @brief Checks that there is exactly one @main function and that it has no parameters
+/// @param node
+void check_main(Node *node) {
+    NodeList *function_definitions = &node->data.program_data.definitions;
     Node *main_definition = NULL;
     int main_count = 0;
 
@@ -177,13 +242,9 @@ void check_main(Node *root) {
         error_exit(ERR_SEMANTIC_ARGUMENTS, main_definition->line,
                    "main function must not have parameters (remove arguments from main function)");
     }
-
-    DataType return_kind = main_definition->data.function_def_data.return_type.kind;
-    if (return_kind != TYPE_UNIT) {
-        error_exit(ERR_SEMANTIC_ARGUMENTS, main_definition->line, "main function must return Unit");
-    }
 }
 
+// TODO
 /// @brief
 Type check_expression(symtab_t *symtable, Node *node) {
     Type itemType = {TYPE_UNKNOWN, NULL};
@@ -191,6 +252,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
         return itemType;
     }
 
+    // For literals, return their types
     switch (node->kind) {
     case NODE_INT:
         itemType.kind = TYPE_INT;
@@ -220,8 +282,11 @@ Type check_expression(symtab_t *symtable, Node *node) {
         for (unsigned int i = 0; i < items->count; i++) {
             Type item_type = check_expression(symtable, items->list[i]);
 
+            // Checks whether all items are of the same type
             if (element_type.kind == TYPE_UNKNOWN) {
                 element_type = item_type;
+
+                // Checks whether the declared type is equal to the given one
             } else if (item_type.kind != TYPE_UNKNOWN && !type_eq(element_type, item_type)) {
                 error_exit(ERR_SEMANTIC_TYPE, items->list[i]->line,
                            "declaration of list with mismatching types, expected %s, got %s",
@@ -237,11 +302,13 @@ Type check_expression(symtab_t *symtable, Node *node) {
 
     case NODE_ID: {
         item_t item = get_item(symtable, node->data.variable_name);
+
         // Check whether the variable exists
         if (item.scope == -1) {
             error_exit(ERR_SEMANTIC_UNDEFINED, node->line, "undefined variable %s",
                        node->data.variable_name);
         }
+
         // Check whether functions was used as variable
         if (item.decl->kind == NODE_FUNCTION_DEF) {
             error_exit(ERR_SEMANTIC_TYPE, node->line, "function %s used as variable",
@@ -255,17 +322,103 @@ Type check_expression(symtab_t *symtable, Node *node) {
     case NODE_BINARY_OPERATOR: {
         BinaryOpData *bin_data = &node->data.bin_op_data;
 
+        // Special case for dot operators
         if (bin_data->op == TOKEN_DOT) {
-            // TODO
+            Type left = check_expression(symtable, bin_data->left);
+            Node *right = bin_data->right;
+
+
+            const char *name = NULL;
+            NodeList *arguments = NULL;
+
+            if (right->kind == NODE_ID) {
+                name = right->data.variable_name;
+            } else if (right->kind == NODE_FUNCTION_CALL) {
+                name = right->data.call_data.name;
+                arguments = &right->data.call_data.arguments;
+            } else {
+                error_exit(ERR_SEMANTIC_TYPE, node->line, "invalid member access");
+            }
+
+
+            // Find the correct row (operat)
+            const DotOperators *result = NULL;
+            unsigned int dot_op_count = sizeof(dot_operators) / sizeof(dot_operators[0]);
+            for (unsigned int i = 0; i < dot_op_count; i++) {
+
+                // Check left type and right name against the defined dot operators
+                if (dot_operators[i].left == left.kind &&
+                    strcmp(dot_operators[i].name, name) == 0) {
+                    result = &dot_operators[i];
+                    break;
+                }
+            }
+
+            if (!result) {
+                error_exit(ERR_SEMANTIC_UNDEFINED, node->line,
+                           "undefined dot operator %s used on %s", name,
+                           DataTypeToString(left.kind));
+            }
+
+            // Check whether arguments match
+            if (result->arg_count == -1) {
+                if (arguments) {
+                    error_exit(ERR_SEMANTIC_TYPE, node->line,
+                               "dot operator `%s` takes no arguments (write it without parantheses",
+                               name);
+                }
+            } else {
+                if (!arguments) {
+                    error_exit(ERR_SEMANTIC_TYPE, node->line,
+                               "dot operator `%s` expects %i arguments, got none", name,
+                               result->arg_count);
+                } else if ((int)arguments->count != result->arg_count) {
+                    error_exit(ERR_SEMANTIC_ARGUMENTS, node->line,
+                               "dot operator `%s` expects %i arguments, got %i", name,
+                               result->arg_count, arguments->count);
+                }
+
+                for (unsigned int i = 0; i < arguments->count; i++) {
+                    if (check_expression(symtable, arguments->list[i]).kind != TYPE_INT) {
+                        error_exit(ERR_SEMANTIC_ARGUMENTS, node->line, "invalid argument type");
+                    }
+                }
+            }
+
+            switch (result->result_type) {
+            case RESULT_ELEMENT:
+                itemType = *left.elem;
+                break;
+
+            case RESULT_SAME:
+                itemType = left;
+                break;
+
+            case RESULT_STRING:
+                itemType.kind = TYPE_STRING;
+                break;
+
+            case RESULT_LIST_INT:
+                itemType.kind = TYPE_LIST;
+                itemType.elem = TypeInit(node->line);
+                *itemType.elem = (Type){TYPE_INT, NULL};
+                break;
+
+            default:
+                error_exit(ERR_SEMANTIC_TYPE, node->line, "undefined return argument in %s", name);
+            }
+
             break;
         }
 
+        // Rest of the binary operators go here
         Type left = check_expression(symtable, bin_data->left);
         Type right = check_expression(symtable, bin_data->right);
         Type num_result = numeric_result(left, right);
 
+        // Switch between all kinds of binary operators
         switch (bin_data->op) {
-        case TOKEN_PLUS:
+        case TOKEN_PLUS: // numeric + numeric, String + String
             if (is_numeric(left) && is_numeric(right)) {
                 itemType = num_result;
             } else if (left.kind == TYPE_STRING && right.kind == TYPE_STRING) {
@@ -279,7 +432,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
 
         case TOKEN_MINUS:
         case TOKEN_MUL:
-        case TOKEN_DIV:
+        case TOKEN_DIV: // numeric (-, *, /) numeric
             if (!is_numeric(left) || !is_numeric(right)) {
                 error_exit(ERR_SEMANTIC_TYPE, node->line, "operands must be numeric");
             }
@@ -290,7 +443,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
         case TOKEN_LS:
         case TOKEN_LS_EQ:
         case TOKEN_GR:
-        case TOKEN_GR_EQ:
+        case TOKEN_GR_EQ: // numeric (<, <=, >, >=) numeric, String (<, <=, >, >=) String
             if ((is_numeric(left) && is_numeric(right)) ||
                 (left.kind == TYPE_STRING && right.kind == TYPE_STRING)) {
                 itemType.kind = TYPE_BOOL;
@@ -301,7 +454,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
             break;
 
         case TOKEN_EQ:
-        case TOKEN_NEQ:
+        case TOKEN_NEQ: // numeric (==, !=) numeric, T (==, !=) T
             if ((is_numeric(left) && is_numeric(right)) || type_eq(left, right)) {
                 itemType.kind = TYPE_BOOL;
             } else {
@@ -311,7 +464,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
             break;
 
         case TOKEN_AND:
-        case TOKEN_OR:
+        case TOKEN_OR: // Boolean (&&, ||) Boolean
             if (left.kind == TYPE_BOOL && right.kind == TYPE_BOOL) {
                 itemType.kind = TYPE_BOOL;
             } else {
@@ -319,16 +472,17 @@ Type check_expression(symtab_t *symtable, Node *node) {
             }
             break;
 
-        case TOKEN_CONCATENATION:
-            if (!type_eq(left, right) || left.kind != TYPE_LIST) {
-                error_exit(ERR_SEMANTIC_TYPE, node->line,
-                           "both operands of concatenation must be list of same the same type");
+        case TOKEN_CONCATENATION: // List[T] ++ List[T], String ++ String
+            if (!type_eq(left, right) || (left.kind != TYPE_LIST && left.kind != TYPE_STRING)) {
+                error_exit(
+                    ERR_SEMANTIC_TYPE, node->line,
+                    "both operands of concatenation must be lists of the same type or strings");
             }
 
             itemType = left;
             break;
 
-        case TOKEN_BY:
+        case TOKEN_BY: // Range by Int
             if (left.kind != TYPE_RANGE || right.kind != TYPE_INT) {
                 error_exit(ERR_SEMANTIC_TYPE, node->line,
                            "operands in by must be range and integer");
@@ -341,7 +495,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
             break;
 
         case TOKEN_UNTIL:
-        case TOKEN_TO:
+        case TOKEN_TO: // Int (until, to) Int
             if (left.kind != TYPE_INT || right.kind != TYPE_INT) {
                 error_exit(ERR_SEMANTIC_TYPE, node->line, "operands in range must be integers");
             }
@@ -356,6 +510,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
         break;
     }
 
+    // Case for all 3 unary operators (+,-,!)
     case NODE_UNARY_OPERATOR: {
         Type type = check_expression(symtable, node->data.un_op_data.operand);
         unsigned int op = node->data.un_op_data.op;
@@ -381,44 +536,101 @@ Type check_expression(symtab_t *symtable, Node *node) {
         break;
     }
 
+    // Checks the function_calls and list indexing
+    //
+    // Check type match between all parameters and arguments
+    // Argument has to be compatible with the parameter
     case NODE_FUNCTION_CALL: {
         item_t item = get_item(symtable, node->data.call_data.name);
 
         // Check whether the called function exists
         if (item.scope == -1) {
-            error_exit(ERR_SEMANTIC_UNDEFINED, node->line, "undefined function");
-        }
-        // Check whether variable was used as a function
-        else if (item.decl->kind != NODE_FUNCTION_DEF) {
-            error_exit(ERR_SEMANTIC_REDEFINITION, node->line, "variable used as function call");
-        }
-
-        NodeList *args = &node->data.call_data.arguments;
-        NodeList *params = &item.decl->data.function_def_data.params;
-
-        // Check parameter count against the argument count
-        if (args->count != params->count) {
-            error_exit(ERR_SEMANTIC_ARGUMENTS, node->line, "wrong number of arguments in %s",
+            error_exit(ERR_SEMANTIC_UNDEFINED, node->line, "undefined function `%s`",
                        node->data.call_data.name);
         }
 
-        // Check type match between all parameters and arguments
-        for (unsigned int i = 0; i < args->count; i++) {
-            Type arg_type = check_expression(symtable, args->list[i]);
-            Type param_type = params->list[i]->data.param_data.type;
+        // Check function call
+        if (item.decl->kind == NODE_FUNCTION_DEF) {
 
-            if (!type_eq(arg_type, param_type) && param_type.kind != TYPE_ANY) {
-                error_exit(ERR_SEMANTIC_ARGUMENTS, args->list[i]->line,
-                           "argument %u of %s has a wrong type", i + 1, node->data.call_data.name);
+            NodeList *args = &node->data.call_data.arguments;
+            NodeList *params = &item.decl->data.function_def_data.params;
+
+            // Check parameter count against the argument count
+            if (args->count != params->count) {
+                error_exit(ERR_SEMANTIC_ARGUMENTS, node->line, "wrong number of arguments in %s",
+                           node->data.call_data.name);
             }
+
+            // Check type match between all parameters and arguments
+            for (unsigned int i = 0; i < args->count; i++) {
+                Type arg_type = check_expression(symtable, args->list[i]);
+                Type param_type = params->list[i]->data.param_data.type;
+
+                if (!type_compatible(param_type, arg_type) && param_type.kind != TYPE_ANY) {
+                    error_exit(ERR_SEMANTIC_ARGUMENTS, args->list[i]->line,
+                               "argument %u of %s has a wrong type", i + 1,
+                               node->data.call_data.name);
+                }
+            }
+
+            // Function On-demand Inference
+            // Definition of a function called from main is not processed yer -> check_function call
+            FunctionDefData *function = &item.decl->data.function_def_data;
+            if (function->return_type.kind == TYPE_UNDEF) {
+                if (function->function_check == FunctionBeingChecked) {
+                    error_exit(ERR_SEMANTIC_TYPE, node->line,
+                               "cannot inference the return type in recursive function %s",
+                               node->data.call_data.name);
+                } else {
+                    check_function(symtable, item.decl);
+                }
+            }
+
+            itemType = item.decl->data.function_def_data.return_type;
+
+        } else if (declaration_to_type(item.decl).kind == TYPE_LIST) {
+            Type defined_type = declaration_to_type(item.decl);
+            NodeList *arguments = &node->data.call_data.arguments;
+
+            if (arguments->count != 1) {
+                error_exit(ERR_SEMANTIC_ARGUMENTS, node->line, "list `%s` expects 1 index, got %i",
+                           node->data.call_data.name, arguments->count);
+            }
+
+            Type index = check_expression(symtable, arguments->list[0]);
+            if (index.kind != TYPE_INT) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "index of a list `%s` must of the type integer",
+                           node->data.call_data.name);
+            }
+
+            itemType = *defined_type.elem;
+
+        } else {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "TOOD");
         }
 
-        itemType = item.decl->data.function_def_data.return_type;
         break;
     }
 
+    // Both branches in if_value has to have the same type
     case NODE_IF_VALUE: {
-        // TODO
+        Type condinition = check_expression(symtable, node->data.if_data.condition);
+        if (condinition.kind != TYPE_BOOL) {
+            error_exit(ERR_SEMANTIC_TYPE, node->line, "condition is not of type boolean");
+        }
+
+        Type then_type = result_type(symtable, node->data.if_data.then_part);
+        Type else_type = result_type(symtable, node->data.if_data.else_part);
+
+        if (type_eq(then_type, else_type)) {
+            itemType = then_type;
+        } else if (is_numeric(then_type) && is_numeric(else_type)) {
+            itemType = numeric_result(then_type, else_type);
+        } else {
+            error_exit(ERR_SEMANTIC_TYPE, node->line,
+                       "both branches must be of same type or numeric");
+        }
         break;
     }
 
@@ -430,6 +642,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
     return itemType;
 }
 
+// TODO
 /// @brief
 void check_statement(symtab_t *symtable, Node *node) {
     if (!node) {
@@ -447,12 +660,20 @@ void check_statement(symtab_t *symtable, Node *node) {
         break;
 
     case NODE_VARIABLE_DECLARATION: {
-        Type value_type = check_expression(symtable, node->data.var_decl_data.value);
         Type *declared_type = &node->data.var_decl_data.type;
+        Type value_type = check_expression(symtable, node->data.var_decl_data.value);
 
-        if (declared_type->kind == TYPE_UNKNOWN) {
+        if (declared_type->kind == TYPE_UNDEF) {
+            if (value_type.kind == TYPE_LIST && value_type.elem->kind == TYPE_UNKNOWN) {
+                error_exit(ERR_SEMANTIC_TYPE, node->line,
+                           "cannot infer type of %s, declare it (e.g. val x: List[Int] = List ())",
+                           node->data.var_decl_data.name);
+            }
+
             *declared_type = value_type;
-        } else if (!type_eq(*declared_type, value_type)) {
+
+
+        } else if (!type_compatible(*declared_type, value_type)) {
             error_exit(ERR_SEMANTIC_TYPE, node->line, "type mismatch in declaration of %s",
                        node->data.var_decl_data.name);
         }
@@ -503,7 +724,7 @@ void check_statement(symtab_t *symtable, Node *node) {
         // Type checking for assign
         Type value_type = check_expression(symtable, node->data.assign_data.value);
         Type var_type = declaration_to_type(item.decl);
-        if (!type_eq(var_type, value_type)) {
+        if (!type_compatible(var_type, value_type)) {
             error_exit(ERR_SEMANTIC_TYPE, node->line, "type mismatch in assignment to %s",
                        node->data.assign_data.name);
         }
@@ -516,10 +737,19 @@ void check_statement(symtab_t *symtable, Node *node) {
             error_exit(ERR_SEMANTIC_TYPE, node->line, "condition is not of type boolean");
         }
 
-        check_statement(symtable, node->data.if_data.then_part);
+        Type then_type = result_type(symtable, node->data.if_data.then_part);
 
-        if (node->data.if_data.else_part) {
-            check_statement(symtable, node->data.if_data.else_part);
+        Type else_type = {TYPE_UNIT, NULL};
+        if (node->data.if_data.else_part != NULL) {
+            else_type = result_type(symtable, node->data.if_data.else_part);
+        }
+
+        if (type_eq(then_type, else_type)) {
+            node->type = then_type;
+        } else if (is_numeric(then_type) && is_numeric(else_type)) {
+            node->type = numeric_result(then_type, else_type);
+        } else {
+            node->type = (Type){TYPE_UNIT, NULL};
         }
 
         break;
@@ -570,17 +800,17 @@ void check_statement(symtab_t *symtable, Node *node) {
 
     case NODE_RETURN: {
         Type expected_type = current_function->data.function_def_data.return_type;
-        Node *value = node->data.return_data.value;
+        Node *value_ptr = node->data.return_data.value;
 
         // Return in function with no declared type
-        if (expected_type.kind == TYPE_UNKNOWN) {
+        if (expected_type.kind == TYPE_UNDEF) {
             error_exit(ERR_SEMANTIC_TYPE, node->line,
                        "return in function %s with no declared return type",
                        current_function->data.function_def_data.name);
         }
 
-        // bare return in non unit function
-        if (value == NULL) {
+        // Bare return in non unit function
+        if (value_ptr == NULL) {
             if (expected_type.kind != TYPE_UNIT) {
                 error_exit(ERR_SEMANTIC_TYPE, node->line,
                            "bare return must be in explicitly Unit functions");
@@ -588,10 +818,15 @@ void check_statement(symtab_t *symtable, Node *node) {
             break;
         }
 
-        Type return_type = check_expression(symtable, value);
-        if (!type_eq(return_type, expected_type)) {
+        // Check the return type of the value in NODE_RETURN
+        Type return_type = check_expression(symtable, value_ptr);
+
+        // Functions with Unit return type evaluates the value but discards it
+        if (expected_type.kind != TYPE_UNIT && !type_compatible(expected_type, return_type)) {
             error_exit(ERR_SEMANTIC_TYPE, node->line, "type mismatch in return");
         }
+
+        node->type = expected_type;
         break;
     }
 
@@ -601,24 +836,54 @@ void check_statement(symtab_t *symtable, Node *node) {
     }
 }
 
+/// @brief
 void check_function(symtab_t *symtable, Node *function) {
+    if (function->data.function_def_data.function_check == FunctionChecked) {
+        return;
+    }
+    function->data.function_def_data.function_check = FunctionBeingChecked;
+
     scope_add(symtable);
     NodeList *parameters = &function->data.function_def_data.params;
     for (unsigned int i = 0; i < parameters->count; i++) {
         Node *param = parameters->list[i];
+
+        // For each function's parameter check whether the name repeats -> redefinition
         if (!item_add(symtable, param->data.param_data.name, param)) {
             error_exit(ERR_SEMANTIC_REDEFINITION, param->line, "redefinition of a parameter %s",
                        param->data.param_data.name);
         }
     }
 
+    // Change current_function to the currently parsed function
     current_function = function;
-    check_statement(symtable, function->data.function_def_data.body);
+
+    // Function return type checking
+    Type body_type = result_type(symtable, function->data.function_def_data.body);
+    Type *declared = &function->data.function_def_data.return_type;
+
+    // Function with undefined return value inference the type from return
+    if (declared->kind == TYPE_UNDEF) {
+        *declared = body_type;
+    }
+    // If the function does return the value and they are not compatible -> error
+    else if (declared->kind != TYPE_UNIT && !type_compatible(*declared, body_type)) {
+        error_exit(ERR_SEMANTIC_TYPE, function->line, "functions `%s` returns wrong type",
+                   function->data.function_def_data.name);
+    }
+
+    // @main function has to return Unit
+    if (function->data.function_def_data.is_main && declared->kind != TYPE_UNIT) {
+        error_exit(ERR_SEMANTIC_TYPE, function->line, "main function must return Unit, not %s",
+                   DataTypeToString(declared->kind));
+    }
+
+    function->data.function_def_data.function_check = FunctionChecked;
     scope_rm(symtable);
 }
 
 int semantic_analyze(Node *root) {
-
+    // Init symtable
     symtab_t *symtable = symtab_init();
     scope_add(symtable);
 
@@ -641,6 +906,7 @@ int semantic_analyze(Node *root) {
         check_function(symtable, function_definitions->list[i]);
     }
 
+    // Free built-in functions and symtable
     NodeListFree(&built_in);
     symtab_dtor(symtable);
     return 0;

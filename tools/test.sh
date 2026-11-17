@@ -8,23 +8,23 @@
 # Faculty of Information Technology, Brno University of Technology
 
 for file in tests/extensive/correct_test/*.scala; do
-    ./ifj26 < "$file" > /dev/null 2>&1
+    output=$(./ifj26 < "$file" 2>&1)
     code=$?
 
     if [ "$code" -eq 0 ]; then
         echo "OK    $file"
     else
-        echo "FAIL  $file code: $code"
+        echo "FAIL  $file code: $code output: $output"
     fi
 done
 
 for file in tests/extensive/incorrect_test/*.scala; do
-    ./ifj26 < "$file" > /dev/null 2>&1
+    output=$(./ifj26 < "$file" 2>&1)
     code=$?
 
     if [ "$code" -eq 0 ]; then
         echo "OK    $file"
     else
-        echo "FAIL  $file code: $code"
+        echo "FAIL  $file code: $code output: $output"
     fi
 done

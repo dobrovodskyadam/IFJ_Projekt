@@ -54,6 +54,7 @@ typedef enum {
     TYPE_LIST,
     TYPE_RANGE,
     TYPE_ANY,
+    TYPE_UNDEF,
 } DataType;
 
 
@@ -89,12 +90,19 @@ typedef struct {
     Type type;
 } ParamData;
 
+typedef enum {
+    FunctionNotChecked,
+    FunctionBeingChecked,
+    FunctionChecked,
+} SemanticProgress;
+
 typedef struct {
     char *name;
     bool is_main;
     NodeList params;
     Node *body;
     Type return_type;
+    SemanticProgress function_check;
 } FunctionDefData;
 
 typedef struct {
