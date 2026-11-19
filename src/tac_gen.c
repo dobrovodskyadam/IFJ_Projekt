@@ -89,6 +89,13 @@ Operand op_label(int id) {
     op.data.label_id = id;
     return op;
 }
+Operand op_bool(bool val)
+{
+    Operand op;
+    op.kind = OP_BOOL;
+    op.data.bool_val = val;
+    return op;
+}
 int new_temp(void) {
     return temp_counter++;
 }
@@ -139,6 +146,8 @@ Operand tac_gen_exp(Node *node, TacList *list)
     {
         return tac_gen_exp(node->data.expression_data,list);
     }
+    case NODE_BOOLEAN:
+        return op_bool(node->data.bool_value);
     case NODE_BINARY_OPERATOR:
     {
         TokenType op = node->data.bin_op_data.op;
@@ -172,11 +181,11 @@ Operand tac_gen_exp(Node *node, TacList *list)
             Operand r_side = tac_gen_exp(node->data.bin_op_data.right,list);
             add_instr(list,TAC_JUMP_IF_FALSE,op_none(),r_side,op_label(label_false));
 
-            add_instr(list,TAC_MOVE,tem_res,op_int(1),op_none());
+            add_instr(list,TAC_MOVE,tem_res,op_bool(true),op_none());
             add_instr(list,TAC_JUMP,op_none(),op_none(),op_label(label_end));
 
             add_instr(list,TAC_LABEL,op_label(label_false),op_none(),op_none());
-            add_instr(list,TAC_MOVE,tem_res,op_int(0),op_none());
+            add_instr(list,TAC_MOVE,tem_res,op_bool(false),op_none());
 
             add_instr(list,TAC_LABEL,op_label(label_end),op_none(),op_none());
 
@@ -197,11 +206,11 @@ Operand tac_gen_exp(Node *node, TacList *list)
             add_instr(list,TAC_JUMP_IF_FALSE,op_none(),r_side,op_label(label_false));
 
             add_instr(list,TAC_LABEL,op_label(label_true),op_none(),op_none());
-            add_instr(list,TAC_MOVE,tem_res,op_int(1),op_none());   
+            add_instr(list,TAC_MOVE,tem_res,op_bool(true),op_none());   
             add_instr(list,TAC_JUMP,op_none(),op_none(),op_label(label_end));
 
             add_instr(list,TAC_LABEL,op_label(label_false),op_none(),op_none());
-            add_instr(list,TAC_MOVE,tem_res,op_int(0),op_none());
+            add_instr(list,TAC_MOVE,tem_res,op_bool(false),op_none());
 
             add_instr(list,TAC_LABEL,op_label(label_end),op_none(),op_none());
 
@@ -378,6 +387,35 @@ void tac_gen_statement(Node *node, TacList *list)
     }
 }
 
+void print_operand(Operand op, FILE *output) {
+    switch (op.kind) {
+        case OP_INT:
+            fprintf(output, "%d", op.data.int_val);
+            break;
+        case OP_DOUBLE:
+            fprintf(output, "%f", op.data.double_val);
+            break;
+        case OP_VAR:
+            fprintf(output, "%s", op.data.name);
+            break;
+        case OP_TEMP:
+            fprintf(output, "T%d", op.data.temp_id);
+            break;
+        case OP_LABEL:
+            fprintf(output, "L%d", op.data.label_id);
+            break;
+        case OP_STRING:
+            fprintf(output, "%s", op.data.str_val);
+            break;
+        case OP_BOOL:
+            fprintf(output, "%s", op.data.bool_val ? "true" : "false");
+            break;
+        case OP_NONE:
+        default:
+            break;
+    }
+}
+
 void tac_code_gen(Node *root, FILE *output) {
     TacList list;
     tac_list_init(&list);
@@ -439,7 +477,6 @@ void tac_code_gen(Node *root, FILE *output) {
                 fprintf(output, " = ");
                 print_operand(instr->a, output);
                 
-                // Znamienko operácie
                 const char *op_str = "+";
                 if (instr->op == TAC_SUB) op_str = "-";
                 else if (instr->op == TAC_MUL) op_str = "*";

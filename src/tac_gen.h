@@ -11,7 +11,7 @@ typedef enum {
     TAC_WRITE, TAC_PARAM, TAC_CALL, TAC_RETURN
 } TacOp;
 
-typedef enum {OP_NONE, OP_VAR, OP_TEMP, OP_INT, OP_DOUBLE, OP_STRING, OP_LABEL }OperandKind;
+typedef enum {OP_NONE, OP_VAR, OP_TEMP, OP_INT, OP_DOUBLE, OP_STRING, OP_LABEL,OP_BOOL }OperandKind;
 
 typedef struct {
     OperandKind kind;       
@@ -21,7 +21,8 @@ typedef struct {
         int int_val;          
         double double_val;    
         const char *str_val;  
-        int label_id;         
+        int label_id;  
+        bool bool_val;       
     } data;                   
 } Operand;
 
