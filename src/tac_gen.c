@@ -377,3 +377,90 @@ void tac_gen_statement(Node *node, TacList *list)
         break;
     }
 }
+
+void tac_code_gen(Node *root, FILE *output) {
+    TacList list;
+    tac_list_init(&list);
+
+    tac_gen_statement(root, &list);
+
+    for (int i = 0; i < list.count; i++) {
+        TACInstr *instr = &list.items[i];
+
+        switch (instr->op) {
+            case TAC_LABEL:
+                print_operand(instr->res, output);
+                fprintf(output, ":\n");
+                break;
+            case TAC_JUMP:
+                fprintf(output, "goto ");
+                print_operand(instr->b, output);
+                fprintf(output, "\n");
+                break;
+            case TAC_JUMP_IF_FALSE:
+                fprintf(output, "if_false ");
+                print_operand(instr->a, output);
+                fprintf(output, " goto ");
+                print_operand(instr->b, output);
+                fprintf(output, "\n");
+                break;
+            case TAC_NOT:
+                print_operand(instr->res, output);
+                fprintf(output, " = not ");
+                print_operand(instr->a, output);
+                fprintf(output, "\n");
+                break;
+            case TAC_MOVE:
+                print_operand(instr->res, output);
+                fprintf(output, " = ");
+                print_operand(instr->a, output);
+                fprintf(output, "\n");
+                break;
+            case TAC_PARAM:
+                fprintf(output, "param ");
+                print_operand(instr->res, output); 
+                fprintf(output, "\n");
+                break;
+            case TAC_CALL:
+                print_operand(instr->res, output);
+                fprintf(output, " = call ");
+                print_operand(instr->a, output);
+                fprintf(output, "\n");
+                break;
+            case TAC_JUMP_IF_TRUE:
+                fprintf(output, "if_true ");
+                print_operand(instr->a, output);
+                fprintf(output, " goto ");
+                print_operand(instr->b, output);
+                fprintf(output, "\n");
+                break;
+            default:
+                print_operand(instr->res, output);
+                fprintf(output, " = ");
+                print_operand(instr->a, output);
+                
+                // Znamienko operácie
+                const char *op_str = "+";
+                if (instr->op == TAC_SUB) op_str = "-";
+                else if (instr->op == TAC_MUL) op_str = "*";
+                else if (instr->op == TAC_IDIV) op_str = "/";
+                else if (instr->op == TAC_DIV) op_str = "/"; 
+                else if (instr->op == TAC_LT) op_str = "<";
+                else if (instr->op == TAC_GT) op_str = ">";
+                else if (instr->op == TAC_EQ) op_str = "==";
+
+                fprintf(output, " %s ", op_str);
+                print_operand(instr->b, output);
+                fprintf(output, "\n");
+                break;
+        }
+    }
+
+    tac_list_free(&list);
+}
+
+void tac_gen_reset(void) {
+    temp_counter = 1;
+    label_counter = 1;
+}
+
