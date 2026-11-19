@@ -10,9 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ast.h"
 #include "hashtable.h"
 #include "symtable.h"
-#include "ast.h"
 
 /// @brief Item of stack, acts as a single scope
 /// @param scope A hashtable acting like a scope
