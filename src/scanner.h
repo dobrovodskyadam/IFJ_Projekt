@@ -1,6 +1,14 @@
+/// @file scanner.h
+/// @brief Header file for module scanner.c
+/// @date 17-11-2026
+///
+/// @author Petr Rysavka (xrysavp00)
+/// @author Email: xrysavp00@stud.fit.vut.cz
+/// Faculty of Information Technology, Brno University of Technology
 #ifndef SCANNER_H
 #define SCANNER_H
 
+/// @brief Enumeration of all tokens types
 typedef enum
 {
  TOKEN_ID,
@@ -59,6 +67,7 @@ typedef enum
  TOKEN_BY
 } TokenType;
 
+/// @brief Structure representing token
 typedef struct {
     TokenType type;
     union {
@@ -68,6 +77,7 @@ typedef struct {
     } value;
 }Token;
 
+/// @brief Structure of token string buffer
 typedef struct
 {
     char *str;
@@ -75,6 +85,7 @@ typedef struct
     int capacity;
 }TokenString;
 
+/// @brief Structure to hold scanner information from function getToken
 typedef struct
 {
     int stack_capacity;
