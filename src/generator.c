@@ -323,6 +323,22 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
             print_operand(instr->a, output);
             fprintf(output, "\n");
             break;
+        case TAC_INT2FLOAT:
+            fprintf(output, "INT2FLOAT ");
+            print_operand(instr->res, output);
+            fprintf(output, " ");
+            print_operand(instr->a, output);
+            fprintf(output, "\n");
+            break;
+        case TAC_CONCAT:
+            fprintf(output,"CONCAT ");
+            print_operand(instr->res,output);
+            fprintf(output," ");
+            print_operand(instr->a,output);
+            fprintf(output," ");
+            print_operand(instr->b,output);
+            fprintf(output,"\n");
+            break;
         default:
             break;
         }

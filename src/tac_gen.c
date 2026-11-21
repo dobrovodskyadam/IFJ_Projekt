@@ -167,6 +167,22 @@ int new_label(void) {
     return label_counter++;
 }
 
+static Operand coerce(Operand op, const Type *from, DataType to, TacList *list)
+{
+    if (from->kind == TYPE_INT && to == TYPE_DOUBLE)
+    {
+        if(op.kind == OP_INT)
+        {
+            return op_double((double)op.data.int_val);
+        }
+        Operand tmp = op_temp(new_temp());
+        add_instr(list,TAC_INT2FLOAT,tmp,op,op_none());
+        return tmp;
+    }
+    return op;
+}
+
+
 TacOp token_to_tac_op(TokenType op) {
     switch (op) {
         case TOKEN_PLUS:  return TAC_ADD;
@@ -215,11 +231,19 @@ Operand tac_gen_exp(Node *node, TacList *list)
     case NODE_BINARY_OPERATOR:
     {
         TokenType op = node->data.bin_op_data.op;
+        Node *left = node->data.bin_op_data.left;
+        Node *right = node->data.bin_op_data.right;
         
         if (op == TOKEN_DIV)
         {
             Operand l_operand = tac_gen_exp(node->data.bin_op_data.left,list);
             Operand r_operand = tac_gen_exp(node->data.bin_op_data.right,list);
+
+            if(left->type.kind == TYPE_DOUBLE || right->type.kind == TYPE_DOUBLE)
+            {
+                l_operand = coerce(l_operand,&left->type,TYPE_DOUBLE,list);
+                r_operand = coerce(r_operand,&right->type,TYPE_DOUBLE,list);
+            }
 
             Operand temp_res = op_temp(new_temp());
 
@@ -284,6 +308,12 @@ Operand tac_gen_exp(Node *node, TacList *list)
 
         Operand l_operand = tac_gen_exp(node->data.bin_op_data.left, list);
         Operand r_operand = tac_gen_exp(node->data.bin_op_data.right,list);
+        
+        if (left->type.kind == TYPE_DOUBLE || right->type.kind == TYPE_DOUBLE)
+        {
+            l_operand = coerce(l_operand, &left->type, TYPE_DOUBLE, list);
+            r_operand = coerce(r_operand, &right->type, TYPE_DOUBLE, list);
+        }
 
         if(op == TOKEN_NEQ || op == TOKEN_GR_EQ || op == TOKEN_LS_EQ )
         {
@@ -309,7 +339,9 @@ Operand tac_gen_exp(Node *node, TacList *list)
         else
         {
             Operand temp_res = op_temp(new_temp());
-            TacOp tac_op = token_to_tac_op(node->data.bin_op_data.op);
+            TacOp tac_op = token_to_tac_op(op);
+            if (op == TOKEN_PLUS && left->type.kind == TYPE_STRING)
+                tac_op = TAC_CONCAT;
             add_instr(list, tac_op, temp_res, l_operand, r_operand);
             return temp_res;
         }
@@ -357,7 +389,8 @@ Operand tac_gen_exp(Node *node, TacList *list)
     {
         if (node->data.un_op_data.op == TOKEN_MINUS)
         {
-            Operand zero = op_int(0);
+             Operand zero = (node->data.un_op_data.operand->type.kind == TYPE_DOUBLE)
+                           ? op_double(0.0) : op_int(0);        
             Operand val = tac_gen_exp(node->data.un_op_data.operand,list);
             Operand temp_re = op_temp(new_temp());
             
@@ -366,7 +399,8 @@ Operand tac_gen_exp(Node *node, TacList *list)
         }
         else if (node->data.un_op_data.op == TOKEN_PLUS)
         {
-            Operand zero = op_int(0);
+            Operand zero = (node->data.un_op_data.operand->type.kind == TYPE_DOUBLE)
+                           ? op_double(0.0) : op_int(0);
             Operand val = tac_gen_exp(node->data.un_op_data.operand,list);
             Operand temp_re = op_temp(new_temp());
 
@@ -381,6 +415,8 @@ Operand tac_gen_exp(Node *node, TacList *list)
             return temp_re;
         }
     }
+    case NODE_UNIT:
+        return op_nil();
     default:
         break;
     }
@@ -465,8 +501,11 @@ void tac_gen_statement(Node *node, TacList *list)
         Operand var_op = op_var(node->data.var_decl_data.name);
         if(node->data.var_decl_data.value != NULL)
         {
-            Operand val_op = tac_gen_exp(node->data.var_decl_data.value, list);
-            add_instr(list,TAC_MOVE,var_op,val_op,op_none());
+            Node *value = node->data.var_decl_data.value;
+            Operand val_op = tac_gen_exp(value, list);
+            val_op = coerce(val_op, &value->type,
+                        node->data.var_decl_data.type.kind, list);
+            add_instr(list, TAC_MOVE, var_op, val_op, op_none());
         }
         break;
     }
