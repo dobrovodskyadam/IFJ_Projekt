@@ -6,6 +6,7 @@
 
 static int temp_counter = 1;
 static int label_counter = 1;
+static int current_func_end_label = -1;
 
 void tac_list_init(TacList *list)
 {
@@ -96,6 +97,69 @@ Operand op_bool(bool val)
     op.data.bool_val = val;
     return op;
 }
+Operand op_nil(void)
+{
+    Operand op;
+    op.kind = OP_NIL;
+    return op;
+}
+
+static char *copy_str(const char *s)
+{
+    char *p = malloc(strlen(s) + 1);
+    if(p == NULL)
+        error_exit(ERR_INTERNAL, 0, "Memory allocation error");
+    strcpy(p,s);
+    return p;
+}
+
+static bool is_value_node(Node *n)
+{
+    switch (n->kind)
+    {
+    case NODE_INT: case NODE_DOUBLE: case NODE_STRING: case NODE_BOOLEAN: case NODE_UNIT:
+    case NODE_ID: case NODE_EXPRESSION: case NODE_BINARY_OPERATOR:
+    case NODE_UNARY_OPERATOR: case NODE_FUNCTION_CALL:
+        return true;
+    default:
+        return false;
+    }
+}
+void tac_gen_statement(Node *node, TacList *list); 
+Operand tac_gen_exp(Node *node, TacList *list);
+
+static Operand gen_body_value(Node *body, TacList *list)
+{
+    if(body == NULL)
+    {
+        return op_none();
+    }
+    if(body->kind != NODE_BLOCK)
+    {
+        if(is_value_node(body))
+            return tac_gen_exp(body,list);
+        tac_gen_statement(body,list);
+        return op_none();
+    }
+
+    NodeList *st = &body->data.block_data.statements;
+    if(st->count == 0)
+    {
+        return op_none();
+    }
+    for(unsigned int i = 0; i + 1 < st->count; i++)
+    {
+        tac_gen_statement(st->list[i],list);
+    }
+    Node *last = st->list[st->count - 1];
+    if(is_value_node(last))
+    {
+        return tac_gen_exp(last,list);
+    }
+    tac_gen_statement(last, list);
+    return op_none();
+}
+
 int new_temp(void) {
     return temp_counter++;
 }
@@ -252,11 +316,35 @@ Operand tac_gen_exp(Node *node, TacList *list)
     }
     case NODE_FUNCTION_CALL:
     {
-        for(unsigned int i = 0; i < node->data.call_data.arguments.count; i++ )
+        unsigned int argc = node->data.call_data.arguments.count;
+        Operand *args = NULL;
+        if (strcmp(node->data.call_data.name, "print") == 0)
         {
-            Operand tmp_operand = tac_gen_exp(node->data.call_data.arguments.list[i],list);
-            add_instr(list,TAC_PARAM,tmp_operand,op_none(),op_none());
+            Node *arg = node->data.call_data.arguments.list[0];
+            Operand val = (arg->type.kind == TYPE_UNIT) ? op_string("()") : tac_gen_exp(arg, list);
+            add_instr(list, TAC_WRITE, op_none(), val, op_none());
+            return op_nil();
         }
+
+        if(argc > 0)
+        {
+            args = malloc(argc*sizeof(Operand));
+            if(args == NULL)
+            {
+                error_exit(ERR_INTERNAL,0,"Memmory allocation error");
+            }
+        }
+
+        for(unsigned int i = 0; i < argc; i++)
+        {
+            args[i] = tac_gen_exp(node->data.call_data.arguments.list[i], list);
+        }
+
+        for(unsigned int i = 0; i < argc; i++)
+        {
+            add_instr(list, TAC_PARAM, args[i],op_none(),op_none());
+        }
+        free(args);
         
         Operand tmp_re = op_temp(new_temp());
         Operand func_name = op_var(node->data.call_data.name);
@@ -308,16 +396,61 @@ void tac_gen_statement(Node *node, TacList *list)
     {
     case NODE_PROGRAM:
     {
+        NodeList *defs = &node->data.program_data.definitions;
+        const char *main_name = NULL;
+
         for(unsigned int i = 0; i < node->data.program_data.definitions.count; i++)
         {
-            tac_gen_statement(node->data.program_data.definitions.list[i],list);
+           Node *def = node->data.program_data.definitions.list[i];
+           if(def != NULL && def->kind == NODE_FUNCTION_DEF && def->data.function_def_data.is_main)
+           {
+                main_name = def->data.function_def_data.name;
+                break;
+           }
         }
+        int program_end = new_label();
+        if(main_name != NULL)
+            add_instr(list,TAC_CALL,op_none(),op_var(main_name),op_none());
+        add_instr(list, TAC_JUMP,op_none(),op_none(),op_label(program_end));
+
+        for(unsigned int i = 0; i < defs->count; i++)
+        {
+            tac_gen_statement(defs->list[i],list);
+        }
+        add_instr(list, TAC_LABEL,op_label(program_end),op_none(),op_none());
         break;
     }
     case NODE_FUNCTION_DEF:
     {
-        tac_gen_statement(node->data.function_def_data.body, list);
+        FunctionDefData *fn = &node->data.function_def_data;
+        int end_label = new_label();
+        current_func_end_label = end_label;
+
+        add_instr(list, TAC_LABEL, op_var(fn->name), op_none(), op_none());
+
+
+        add_instr(list, TAC_MOVE, op_var("%retval"), op_nil(), op_none());
+
+
+        for (unsigned int i = 0; i < fn->params.count; i++)
+        {
+            Node *param_node = fn->params.list[i];
+            char slot_buf[32];
+            snprintf(slot_buf, sizeof(slot_buf), "%%%u", i + 1);
+            add_instr(list, TAC_MOVE, op_var(param_node->data.param_data.name),
+                      op_var(copy_str(slot_buf)), op_none());
+        }
+
+        Operand last = gen_body_value(fn->body, list);
+        if (last.kind != OP_NONE && fn->return_type.kind != TYPE_UNIT)
+            add_instr(list, TAC_MOVE, op_var("%retval"), last, op_none());
+
+        add_instr(list, TAC_LABEL, op_label(end_label), op_none(), op_none());
+        add_instr(list, TAC_RETURN, op_none(), op_none(), op_none());
+
+        current_func_end_label = -1;
         break;
+
     }
     case NODE_ASSIGN:
     {
@@ -382,12 +515,27 @@ void tac_gen_statement(Node *node, TacList *list)
         add_instr(list, TAC_LABEL, op_label(label_end), op_none(), op_none());
         break;
     }
+    case NODE_RETURN:
+    {
+        if (node->data.return_data.value != NULL)
+        {
+            Operand ret_val = tac_gen_exp(node->data.return_data.value, list);
+            add_instr(list, TAC_MOVE, op_var("%retval"), ret_val, op_none());
+        }
+        if (current_func_end_label != -1)
+        {
+            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(current_func_end_label));
+        }
+        break;
+    }
     default:
+        tac_gen_exp(node, list);
         break;
     }
 }
 
-void print_operand(Operand op, FILE *output) {
+
+static void print_operand(Operand op, FILE *output) {
     switch (op.kind) {
         case OP_INT:
             fprintf(output, "%d", op.data.int_val);
@@ -499,5 +647,6 @@ void tac_code_gen(Node *root, FILE *output) {
 void tac_gen_reset(void) {
     temp_counter = 1;
     label_counter = 1;
+    current_func_end_label = -1;
 }
 

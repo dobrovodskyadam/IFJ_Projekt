@@ -11,7 +11,7 @@ typedef enum {
     TAC_WRITE, TAC_PARAM, TAC_CALL, TAC_RETURN
 } TacOp;
 
-typedef enum {OP_NONE, OP_VAR, OP_TEMP, OP_INT, OP_DOUBLE, OP_STRING, OP_LABEL,OP_BOOL }OperandKind;
+typedef enum {OP_NONE, OP_VAR, OP_TEMP, OP_INT, OP_DOUBLE, OP_STRING, OP_LABEL,OP_BOOL,OP_NIL }OperandKind;
 
 typedef struct {
     OperandKind kind;       

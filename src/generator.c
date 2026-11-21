@@ -3,9 +3,11 @@
 #include <string.h>
 #include "generator.h"
 #include "error.h"
+#include <ctype.h>
 
 static bool *temp_seen = NULL;          
 static int temp_seen_cap = 0;
+static int param_idx = 0;
 
 static const char **var_seen = NULL;
 static int var_seen_cnt = 0;
@@ -22,6 +24,11 @@ static void defined_reset(void)
     temp_seen_cap = 0;
     var_seen_cnt = 0;
     var_seen_cap = 0;
+}
+
+static bool is_param_slot(const char *name)
+{
+    return name[0] == '%' && isdigit((unsigned char)name[1]);
 }
 
 static bool first_time_temp(int id)
@@ -71,22 +78,37 @@ static void define_operand(Operand op, FILE *out)
     {
         fprintf(out,"DEFVAR LF@%%T%d\n", op.data.temp_id);
     }
-    else if (op.kind == OP_VAR && first_time_var(op.data.name))
+    else if (op.kind == OP_VAR && !is_param_slot(op.data.name) && first_time_var(op.data.name))
         fprintf(out, "DEFVAR LF@%s\n", op.data.name);
 }
 
-static void print_defvars(const TacList *list, FILE *out)
+static bool is_function_label(const TACInstr *in)
+{
+    return in->op == TAC_LABEL && in->res.kind == OP_VAR;
+}
+
+static void print_defvars(const TacList *list, int from, int to, FILE *out)
 {
     defined_reset();
-    for (int i = 0; i < list->count; i++)
+    for (int i = from; i < to; i++)
     {
         const TACInstr *in = &list->items[i];
+        if (in->op == TAC_LABEL)         
+            continue;
 
         define_operand(in->res, out);
         if (in->op != TAC_CALL)          
             define_operand(in->a, out);
         define_operand(in->b, out);
     }
+}
+
+static int function_end(const TacList *list, int start)
+{
+    for (int j = start; j < list->count; j++)
+        if (list->items[j].op == TAC_RETURN)
+            return j;
+    return list->count;
 }
 
 static void print_operand(Operand op, FILE *out)
@@ -101,9 +123,15 @@ static void print_operand(Operand op, FILE *out)
         break;
 
     case OP_STRING:
-        fprintf(out,"string@%s",op.data.str_val);
+        fprintf(out, "string@");
+        for (const unsigned char *p = (const unsigned char *)op.data.str_val; *p; p++)
+        {
+            if (*p <= 32 || *p == '#' || *p == '\\')
+                fprintf(out, "\\%03d", *p);   
+            else
+                fputc(*p, out);
+        }
         break;
-
     case OP_TEMP:
         fprintf(out,"LF@%%T%d",op.data.temp_id);
         break;
@@ -118,7 +146,9 @@ static void print_operand(Operand op, FILE *out)
     case OP_BOOL:
             fprintf(out, "bool@%s", op.data.bool_val ? "true" : "false");
             break;
-
+    case OP_NIL:
+        fprintf(out, "nil@nil");
+        break;
     case OP_NONE:
         break;
     default:
@@ -128,8 +158,14 @@ static void print_operand(Operand op, FILE *out)
 
 void generate_ifjcode26(TacList *tac_list, FILE *output)
 {
+    param_idx = 0;
     fprintf(output,".IFJcode26\n");
-    print_defvars(tac_list, output);
+    fprintf(output,"CREATEFRAME\n");
+    fprintf(output,"PUSHFRAME\n");
+    int first_fn = tac_list->count;
+    for (int i = 0; i < tac_list->count; i++)
+    if (is_function_label(&tac_list->items[i])) { first_fn = i; break; }
+    print_defvars(tac_list, 0, first_fn, output);
 
     for(int i = 0; i < tac_list->count; i++)
     {
@@ -137,9 +173,15 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
         switch (instr->op)
         {
         case TAC_LABEL:
-            fprintf(output,"LABEL ");
-            print_operand(instr->res,output);
-            fprintf(output,"\n");
+            if (instr->res.kind == OP_VAR)
+            {
+                fprintf(output, "LABEL $%s\n", instr->res.data.name);
+                print_defvars(tac_list, i + 1, function_end(tac_list, i + 1), output);
+            }
+            else
+            {
+                fprintf(output, "LABEL L%d\n", instr->res.data.label_id);
+            }
             break;
         case TAC_MOVE:
             fprintf(output,"MOVE ");
@@ -246,9 +288,45 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
             print_operand(instr->a, output);
             fprintf(output, "\n");
             break;
+        case TAC_RETURN:
+            fprintf(output, "RETURN\n");
+            break;
+        case TAC_PARAM:
+            if (param_idx == 0)
+            {
+                fprintf(output, "CREATEFRAME\n");
+            }
+            param_idx++;
+            fprintf(output, "DEFVAR TF@%%%d\n", param_idx);
+            fprintf(output, "MOVE TF@%%%d ", param_idx);
+            print_operand(instr->res, output);
+            fprintf(output, "\n");
+            break;
+        case TAC_CALL:
+            if (param_idx == 0)
+            {
+                fprintf(output, "CREATEFRAME\n");
+            }
+            fprintf(output, "PUSHFRAME\n");
+            fprintf(output, "CALL $%s\n", instr->a.data.name);
+            fprintf(output, "POPFRAME\n");
+            if (instr->res.kind != OP_NONE)
+            {
+                fprintf(output, "MOVE ");
+                print_operand(instr->res, output);
+                fprintf(output, " TF@%%retval\n");
+            }
+            param_idx = 0;
+            break;
+        case TAC_WRITE:
+            fprintf(output, "WRITE ");
+            print_operand(instr->a, output);
+            fprintf(output, "\n");
+            break;
         default:
             break;
         }
     }
+    fprintf(output,"EXIT int@0\n");
     defined_reset();
 }
