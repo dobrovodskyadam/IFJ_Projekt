@@ -156,6 +156,21 @@ static void print_operand(Operand op, FILE *out)
     }
 }
 
+static void print_generic(FILE *out, const char *mnem, TACInstr *instr)
+{
+    fprintf(out, "%s",mnem);
+    const Operand *ops[3] = {&instr->res, &instr->a, &instr->b};
+    for(int k = 0; k < 3; k++)
+    {
+        if (ops[k]->kind != OP_NONE)
+        {
+            fputc(' ',out);
+            print_operand(*ops[k],out);
+        }
+    }
+    fputc('\n',out);
+}
+
 void generate_ifjcode26(TacList *tac_list, FILE *output)
 {
     param_idx = 0;
@@ -339,6 +354,19 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
             print_operand(instr->b,output);
             fprintf(output,"\n");
             break;
+        case TAC_READ:
+            fprintf(output,"READ ");
+            print_operand(instr->res,output);
+            fprintf(output," %s\n",instr->a.data.str_val);
+            break;
+        case TAC_STRLEN: print_generic(output,"STRLEN",instr); break;
+        case TAC_FLOAT2INT: print_generic(output,"FLOAT2INT",instr); break;
+        case TAC_INT2STR: print_generic(output,"INT2STR",instr); break;
+        case TAC_FLOAT2STR: print_generic(output,"FLOAT2STR",instr); break;
+        case TAC_STRI2INT: print_generic(output,"STRI2INT",instr); break;
+        case TAC_INT2CHAR: print_generic(output,"INT2CHAR",instr); break;
+        case TAC_GETCHAR: print_generic(output,"GETCHAR",instr); break;
+        case TAC_EXIT: print_generic(output,"EXIT",instr); break;
         default:
             break;
         }

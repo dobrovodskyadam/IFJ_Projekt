@@ -197,6 +197,19 @@ TacOp token_to_tac_op(TokenType op) {
     }
 }
 
+static Operand print_un(TacList *list, TacOp op, Operand a)
+{
+    Operand tmp = op_temp(new_temp());
+    add_instr(list,op,tmp,a,op_none());
+    return tmp;
+}
+static Operand print_bin(TacList *list, TacOp op, Operand a, Operand b)
+{
+    Operand tmp = op_temp(new_temp());
+    add_instr(list,op,tmp,a,b);
+    return tmp;
+}
+static bool gen_builtin(Node *node, TacList *list, Operand *res);
 
 Operand tac_gen_exp(Node *node, TacList *list)
 {
@@ -357,6 +370,9 @@ Operand tac_gen_exp(Node *node, TacList *list)
             add_instr(list, TAC_WRITE, op_none(), val, op_none());
             return op_nil();
         }
+        Operand builtin_res;
+        if (gen_builtin(node, list, &builtin_res))
+            return builtin_res;
 
         if(argc > 0)
         {
@@ -573,6 +589,172 @@ void tac_gen_statement(Node *node, TacList *list)
     }
 }
 
+static bool gen_builtin(Node *node, TacList *list, Operand *res)
+{
+    const char *name = node->data.call_data.name;
+    NodeList *args = &node->data.call_data.arguments;
+
+    if(strcmp(name,"readInt") == 0 || strcmp(name,"readDouble") == 0 || strcmp(name,"readLine") == 0)
+    {
+        const char *type = "int";
+        Operand fallback = op_int(0);
+
+        if(strcmp(name,"readDouble") == 0)
+        {
+            type = "float";
+            fallback = op_double(0.0);
+        }
+        if(strcmp(name,"readLine") == 0)
+        {
+            type = "string";
+            fallback = op_string("");
+        }
+
+        Operand tmp = op_temp(new_temp());
+        add_instr(list, TAC_READ, tmp, op_string(type), op_none());
+        Operand is_nil = print_bin(list,TAC_EQ,tmp,op_nil());
+        int label_end = new_label();
+        add_instr(list, TAC_JUMP_IF_FALSE, op_none(), is_nil, op_label(label_end));
+        add_instr(list, TAC_MOVE, tmp, fallback, op_none());
+        add_instr(list, TAC_LABEL, op_label(label_end), op_none(), op_none());
+        *res = tmp;
+        return true;
+
+    }
+    if(strcmp(name, "readBoolean") == 0)
+    {
+        Operand tmp = op_temp(new_temp());
+        add_instr(list, TAC_READ, tmp, op_string("bool"), op_none());
+        *res = tmp;
+        return true;
+    }
+
+    if(strcmp(name, "strLength") == 0)
+    {
+        *res = print_un(list, TAC_STRLEN, tac_gen_exp(args->list[0], list));
+        return true;
+    }
+    if(strcmp(name,"chr") == 0)
+    {
+        *res = print_un(list, TAC_INT2CHAR, tac_gen_exp(args->list[0], list));
+        return true;
+    }
+    if(strcmp(name,"toInt") == 0)
+    {
+        Node *arg = args->list[0];
+        Operand a = coerce(tac_gen_exp(arg, list), &arg->type, TYPE_DOUBLE, list);
+        *res = print_un(list, TAC_FLOAT2INT, a);
+        return true;
+    }
+    if(strcmp(name, "toStr") == 0)
+    {
+        Node *arg = args->list[0];
+        Operand a = tac_gen_exp(arg, list);
+        switch (arg->type.kind)
+        {
+        case TYPE_INT:
+            *res = print_un(list,TAC_INT2STR,a);
+            break;
+        case TYPE_DOUBLE:
+            *res = print_un(list, TAC_FLOAT2STR, a);
+            break;
+        case TYPE_STRING:
+            *res = a;
+            break;
+        case TYPE_UNIT:
+            *res = op_string("()"); 
+            break;
+        case TYPE_BOOL:
+        {
+            Operand tmp = op_temp(new_temp());
+            int l_false = new_label();
+            int l_end = new_label();
+
+            add_instr(list, TAC_JUMP_IF_FALSE, op_none(), a, op_label(l_false));
+            add_instr(list, TAC_MOVE, tmp, op_string("true"), op_none());
+            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
+            add_instr(list, TAC_LABEL, op_label(l_false), op_none(), op_none());
+            add_instr(list, TAC_MOVE, tmp, op_string("false"), op_none());
+            add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+            *res = tmp;
+            break;
+        }        
+        default:
+            *res = a; break; 
+            break;
+        }
+        return true;
+    }
+    if(strcmp(name,"ord") == 0)
+    {
+        Operand s = tac_gen_exp(args->list[0],list);
+        Operand i = tac_gen_exp(args->list[1], list);
+        Operand tmp = op_temp(new_temp());
+        int l_neg = new_label();
+        int l_end = new_label();
+
+        Operand len = print_un(list,TAC_STRLEN,s);
+        Operand c1 = print_bin(list,TAC_LT,i,op_int(0));
+        add_instr(list,TAC_JUMP_IF_TRUE,op_none(),c1,op_label(l_neg));
+        Operand c2 = print_bin(list,TAC_LT,i,len);
+        add_instr(list,TAC_JUMP_IF_FALSE,op_none(),c2,op_label(l_neg));
+
+        add_instr(list, TAC_STRI2INT, tmp, s, i);
+        add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
+        add_instr(list, TAC_LABEL, op_label(l_neg), op_none(), op_none());
+        add_instr(list, TAC_MOVE, tmp, op_int(-1), op_none());
+        add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+        *res = tmp;
+        return true;
+
+    }
+    if(strcmp(name, "subStr") == 0)
+    {
+        Operand s = tac_gen_exp(args->list[0], list);
+        Operand start = tac_gen_exp(args->list[1], list);
+        Operand end = tac_gen_exp(args->list[2], list);
+        int l_err = new_label();
+        int l_loop = new_label();
+        int l_done = new_label();
+        int l_end = new_label();
+
+        Operand len = print_un(list,TAC_STRLEN,s);
+
+        Operand c1 = print_bin(list,TAC_LT,start,op_int(0));
+        add_instr(list, TAC_JUMP_IF_TRUE, op_none(), c1, op_label(l_err));
+        Operand c2 = print_bin(list, TAC_LT, end, op_int(0));
+        add_instr(list, TAC_JUMP_IF_TRUE, op_none(), c2, op_label(l_err));
+        Operand c3 = print_bin(list, TAC_GT, start, end);
+        add_instr(list, TAC_JUMP_IF_TRUE, op_none(), c3, op_label(l_err));
+        Operand c4 = print_bin(list, TAC_LT, start, len);  
+        add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c4, op_label(l_err)); 
+        Operand c5 = print_bin(list, TAC_GT, end, len);
+        add_instr(list, TAC_JUMP_IF_TRUE, op_none(), c5, op_label(l_err)); 
+        
+        Operand tmp = op_temp(new_temp());
+        Operand i = op_temp(new_temp());
+        add_instr(list, TAC_MOVE, tmp, op_string(""), op_none());
+        add_instr(list, TAC_MOVE, i, start, op_none());
+
+        add_instr(list, TAC_LABEL, op_label(l_loop), op_none(), op_none());
+        Operand cond = print_bin(list, TAC_LT, i, end); 
+        add_instr(list, TAC_JUMP_IF_FALSE, op_none(), cond, op_label(l_done));
+        Operand ch = print_bin(list, TAC_GETCHAR, s, i);
+        add_instr(list, TAC_CONCAT, tmp, tmp, ch);
+        add_instr(list, TAC_ADD, i, i, op_int(1));
+        add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_loop));
+
+        add_instr(list, TAC_LABEL, op_label(l_done), op_none(), op_none());
+        add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
+        add_instr(list, TAC_LABEL, op_label(l_err), op_none(), op_none());
+        add_instr(list, TAC_EXIT, op_none(), op_int(40), op_none());
+        add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+        *res = tmp;
+        return true;
+
+    }
+    return false;
+}
 
 static void print_operand(Operand op, FILE *output) {
     switch (op.kind) {
