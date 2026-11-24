@@ -28,7 +28,7 @@ done
 for file in tests/extensive/incorrect_test/*.scala; do
     output=$(./ifj26 < "$file" 2>&1 > /dev/null)
     code=$?
-    expected=$(basename "$file" .scala | cut -d '_' -f 3)
+    expected=$(basename "$file" .scala | cut -d '_' -f 2)
     incorrect_all=$((incorrect_all + 1))
 
     if [ "$code" -eq "$expected" ]; then

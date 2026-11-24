@@ -1,4 +1,4 @@
-// comparasion on two lists
+// comparison of two lists
 
 import ifj26.*
 

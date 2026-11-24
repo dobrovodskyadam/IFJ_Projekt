@@ -4,9 +4,9 @@ import ifj26.*
 
 def factorial(n: Int) =
   if n > 0 then
-    return countdown(n - 1) * n
+    factorial(n - 1) * n
   else
-    return 1
+    1
 
 @main def main(): Unit =
-  factorial()
+  print(toStr(factorial(5)))

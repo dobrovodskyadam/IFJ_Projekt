@@ -2,7 +2,7 @@
 
 import ifj26.*
 
-def hello(): =
+def hello(): Unit =
 
 @main def main(): Unit =
   hello()
