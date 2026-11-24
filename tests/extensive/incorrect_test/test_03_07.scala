@@ -1,5 +1,4 @@
 // variable is defined in block but access outside
-// Expected exit code: 3
 
 import ifj26.*
 

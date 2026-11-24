@@ -1,5 +1,4 @@
 // missing do in while cycle
-// Expected exit code: 2
 
 import ifj26.*
 

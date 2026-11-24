@@ -1,5 +1,4 @@
 // cycle variable used elsewhere
-// Expected exit code: 3
 
 import ifj26.*
 

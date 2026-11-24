@@ -1,5 +1,4 @@
 // undefined member access operator
-// Expected exit code: 3
 
 import ifj26.*
 

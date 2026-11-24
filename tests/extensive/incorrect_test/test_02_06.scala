@@ -1,5 +1,4 @@
 // function with empty body
-// Expected exit code: 2
 
 import ifj26.*
 

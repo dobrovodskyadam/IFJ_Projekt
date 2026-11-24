@@ -1,5 +1,4 @@
 // use of undefined variable
-// Expected exit code: 3
 
 import ifj26.*
 

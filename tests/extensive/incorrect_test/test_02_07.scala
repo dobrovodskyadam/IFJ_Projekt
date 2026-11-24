@@ -1,5 +1,4 @@
 // if value with only if part
-// Expected exit code: 2
 
 import ifj26.*
 

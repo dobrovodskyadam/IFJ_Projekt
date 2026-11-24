@@ -1,5 +1,4 @@
 // missing type
-// Expected exit code: 2
 
 import ifj26.*
 

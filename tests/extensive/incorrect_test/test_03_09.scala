@@ -1,5 +1,4 @@
 // using variable in it's own definition
-// Expected exit code: 3
 
 import ifj26.*
 

@@ -1,5 +1,4 @@
 // Line start with operator 
-// Expected exit code: 2
 
 import ifj26.*
 
