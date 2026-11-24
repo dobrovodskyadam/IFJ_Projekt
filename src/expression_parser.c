@@ -1,12 +1,13 @@
-// @file expression_parser.c
-// @brief Precedence parser for expressions
-// @date 07-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file expression_parser.c
+/// @brief Precedence parser for expressions
+/// @date 07-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 #include "expression_parser.h"
+#include "ast.h"
 #include "error.h"
 #include "parser.h"
 #include "scanner.h"
@@ -35,21 +36,26 @@ typedef enum {
     S_MARK     // <
 } Symbol;
 
+typedef struct {
+    Symbol symbol; // Holds the symbol (as previously)
+    TokenType op;  // Holds the token type (since symbol doesn't carry the same information as TokenType)
+    Node *node;    // Pointer to subtress (e.g. UNARY_OP ->  OPERAND)
+} StackItem;
 
 typedef struct AStack {
-    Symbol *items;
+    StackItem *items;
     int count;
     int capacity;
 } Stack;
 
 
-// @brief  Precedence Table
-// row     - topmost terminal on the stack
-// columnt - current input symbol
-// <       - shift with mark
-// =       - shift without mark
-// >       - reduce
-// ' '     - syntax error
+/// @brief  Precedence Table
+/// row     - topmost terminal on the stack
+/// columnt - current input symbol
+/// <       - shift with mark
+/// =       - shift without mark
+/// >       - reduce
+/// ' '     - syntax error
 const char precedence_table[S_COUNT][S_COUNT] = {
     //                 i    (    )    .    !    *    +    >   ==   &&   ||   to    $
     [S_OPERAND]  =  { ' ', ' ', '>', '>', ' ', '>', '>', '>', '>', '>', '>', '>', '>'},
@@ -69,26 +75,26 @@ const char precedence_table[S_COUNT][S_COUNT] = {
 // clang-format on
 
 
-// @brief Initializes the stack with capacity set with STACK_INITIAL_CAPACITY
+/// @brief Initializes the stack with capacity set with STACK_INITIAL_CAPACITY
 void initStack(Stack *stack) {
     stack->capacity = STACK_INITIAL_CAPACITY;
     stack->count = 0;
-    stack->items = malloc(sizeof(Symbol) * stack->capacity);
+    stack->items = malloc(sizeof(StackItem) * stack->capacity);
     if (!stack->items) {
         error_exit(ERR_INTERNAL, 0, "Memory allocation fail: initStack");
     }
 }
 
-// @brief Free stack from memory
+/// @brief Free stack from memory
 void freeStack(Stack *stack) {
     free(stack->items);
 }
 
-// @brief Push an element to stack
-void pushStack(Stack *stack, Symbol symbol) {
+/// @brief Push an element to stack
+void pushStack(Stack *stack, StackItem symbol) {
     if (stack->count == stack->capacity) {
         stack->capacity *= 2;
-        Symbol *realloc_array = realloc(stack->items, stack->capacity * sizeof(Symbol));
+        StackItem *realloc_array = realloc(stack->items, stack->capacity * sizeof(StackItem));
         if (!realloc_array) {
             error_exit(ERR_INTERNAL, 0, "Memory allocation fail: pushStack");
         }
@@ -99,38 +105,39 @@ void pushStack(Stack *stack, Symbol symbol) {
     stack->count++;
 }
 
-// @brief Pop topmost element and return it
-Symbol popStack(Stack *stack) {
+/// @brief Pop topmost element and return it
+StackItem popStack(Stack *stack) {
     stack->count--;
     return stack->items[stack->count];
 }
 
-// @brief Predicate whether stack is empty
+/// @brief Predicate whether stack is empty
 bool isEmptyStack(Stack *stack) {
     return stack->count == 0;
 }
 
-// @brief Returns the first terminal on the stack
-// Skips S_MARK and S_EXPR
-Symbol topTerminal(Stack *stack) {
+/// @brief Returns the first terminal on the stack
+/// Skips S_MARK and S_EXPR
+StackItem topTerminal(Stack *stack) {
     int i = stack->count - 1;
-    while (stack->items[i] >= S_COUNT) {
+    while (stack->items[i].symbol >= S_COUNT) {
         i--;
     }
 
     return stack->items[i];
 }
 
-// @brief Inserts S_MARK right after the given terminal
-void insertMark(Stack *stack, Symbol terminal) {
+/// @brief Inserts S_MARK right after the given terminal
+void insertMark(Stack *stack, StackItem terminal) {
     Stack temp;
     initStack(&temp);
 
-    while (!isEmptyStack(stack) && stack->items[stack->count - 1] != terminal) {
+    while (!isEmptyStack(stack) && stack->items[stack->count - 1].symbol != terminal.symbol) {
         pushStack(&temp, popStack(stack));
     }
 
-    pushStack(stack, S_MARK);
+    StackItem mark = {S_MARK, 0, NULL};
+    pushStack(stack, mark);
 
     while (!isEmptyStack(&temp)) {
         pushStack(stack, popStack(&temp));
@@ -139,13 +146,13 @@ void insertMark(Stack *stack, Symbol terminal) {
     freeStack(&temp);
 }
 
-// @brief Predicate whether the end condition is met
-// End condition: $E
+/// @brief Predicate whether the end condition is met
+/// End condition: $E
 bool isExpressionFinished(Stack *stack) {
-    return stack->count == 2 && stack->items[0] == S_END && stack->items[1] == S_EXPR;
+    return stack->count == 2 && stack->items[0].symbol == S_END && stack->items[1].symbol == S_EXPR;
 }
 
-// @brief Converts the current token to a symbol
+/// @brief Converts the current token to a symbol
 Symbol tokenToSymbol(void) {
     switch (current.type) {
     case TOKEN_ID:
@@ -216,45 +223,63 @@ Symbol tokenToSymbol(void) {
     }
 }
 
-// @brief Reduces right side of a rule to S_EXPR
-// Left       Right Side
-// E     ->   E op E
-// E     ->   unary E
-// E     ->   i
-// E     ->   ( E )
+/// @brief Reduces the handle to S_EXPR
+/// Rule
+/// E -> E op E    New Binary Operator
+/// E -> unary E   New Unary Operator
+/// E -> i         New Leaf
+/// E -> ( E )     Parentheses are skipped in creation of AST
 void reduce(Stack *stack) {
+    // Find the topmost mark, the handle starts right after it
     int mark_idx = stack->count - 1;
-    while (stack->items[mark_idx] != S_MARK) {
+    while (stack->items[mark_idx].symbol != S_MARK) {
         mark_idx--;
     }
 
-    Symbol *handle = &stack->items[mark_idx + 1];
+    // The handle points directly into the stack, its size is 1, 2 or 3 items
+    StackItem *handle = &stack->items[mark_idx + 1];
     int size = stack->count - mark_idx - 1;
 
+    Node *ptr = NULL;
     bool valid = false;
     switch (size) {
     case 1:
-        if (handle[0] == S_OPERAND) {
+        if (handle[0].symbol == S_OPERAND) {
             valid = true;
+            ptr = handle[0].node;
         }
         break;
 
     case 2:
-        if (handle[0] == S_UNARY && handle[1] == S_EXPR) {
+        if (handle[0].symbol == S_UNARY && handle[1].symbol == S_EXPR) {
             valid = true;
+
+            // Create a UNARY_OPERATOR node with the operator (!, - or +) and its operand
+            ptr = ASTNewNode(NODE_UNARY_OPERATOR, handle[1].node->line);
+            ptr->data.un_op_data.operand = handle[1].node;
+            ptr->data.un_op_data.op = handle[0].op;
         }
         break;
 
     case 3:
         // clang-format off
-        if (handle[0] == S_LPAREN && handle[1] == S_EXPR && handle[2] == S_RPAREN) {
+        if (handle[0].symbol == S_LPAREN && handle[1].symbol == S_EXPR && handle[2].symbol == S_RPAREN) {
+            ptr = handle[1].node;
             valid = true;
-        } else if (handle[0] == S_EXPR &&
-                   (handle[1] == S_DOT || handle[1] == S_ADD || handle[1] == S_MUL ||
-                    handle[1] == S_EQ  || handle[1] == S_REL || handle[1] == S_AND ||
-                    handle[1] == S_OR  || handle[1] == S_RANGE) &&
-                   handle[2] == S_EXPR) {
+
+        } else if (handle[0].symbol == S_EXPR &&
+                   (handle[1].symbol == S_DOT || handle[1].symbol == S_ADD || handle[1].symbol == S_MUL ||
+                    handle[1].symbol == S_EQ  || handle[1].symbol == S_REL || handle[1].symbol == S_AND ||
+                    handle[1].symbol == S_OR  || handle[1].symbol == S_RANGE) &&
+                   handle[2].symbol == S_EXPR) {
             valid = true;
+
+            // Create a BINARY_OPERATOR node with the operator and left and right subtrees
+            ptr = ASTNewNode(NODE_BINARY_OPERATOR, handle[0].node->line);
+            ptr->data.bin_op_data.left = handle[0].node;
+            ptr->data.bin_op_data.op = handle[1].op;
+            ptr->data.bin_op_data.right = handle[2].node;
+
             // clang-format on
         }
         break;
@@ -268,29 +293,77 @@ void reduce(Stack *stack) {
     }
 
     stack->count = mark_idx;
-    pushStack(stack, S_EXPR);
+
+    StackItem expr = {S_EXPR, 0, ptr};
+    pushStack(stack, expr);
 }
 
-// @brief Predicate whether there is S_LPAREN on the stack
+/// @brief Predicate whether there is S_LPAREN on the stack
 bool hasOpenParen(Stack *stack) {
     for (int i = 0; i < stack->count; i++) {
-        if (stack->items[i] == S_LPAREN) {
+        if (stack->items[i].symbol == S_LPAREN) {
             return true;
         }
     }
-
     return false;
 }
 
+/// @brief
+Node *LeafNode(void) {
+    Node *ptr = NULL;
 
-// @brief Parses one expression using the precedence table
-// Stops at the first token that is not part of an expression
-void parse_expression(void) {
+    switch (current.type) {
+    case TOKEN_ID:
+        ptr = ASTNewNode(NODE_ID, current.line);
+        ptr->data.variable_name = current.value.str_val;
+        current.value.str_val = NULL;
+        break;
+
+    case TOKEN_INT:
+        ptr = ASTNewNode(NODE_INT, current.line);
+        ptr->data.int_value = current.value.int_val;
+        break;
+
+    case TOKEN_DOUBLE:
+        ptr = ASTNewNode(NODE_DOUBLE, current.line);
+        ptr->data.double_value = current.value.double_val;
+        break;
+
+    case TOKEN_STRING:
+        ptr = ASTNewNode(NODE_STRING, current.line);
+        ptr->data.string_val = current.value.str_val;
+        current.value.str_val = NULL;
+        break;
+
+    case TOKEN_TRUE:
+        ptr = ASTNewNode(NODE_BOOLEAN, current.line);
+        ptr->data.bool_value = true;
+        break;
+
+    case TOKEN_FALSE:
+        ptr = ASTNewNode(NODE_BOOLEAN, current.line);
+        ptr->data.bool_value = false;
+        break;
+
+    default:
+        syntax_error("operand");
+    }
+    return ptr;
+}
+
+/// @brief Parses one expression using the precedence table
+/// Stops at the first token that is not part of an expression
+Node *parse_expression(void) {
+    // Init stack
     Stack stack;
     initStack(&stack);
-    pushStack(&stack, S_END);
 
-    Symbol top_terminal, input;
+    // Push $ to the stack
+    StackItem end = {S_END, 0, NULL};
+    pushStack(&stack, end);
+
+    StackItem top_terminal;
+    Symbol input;
 
     while (true) {
         // Get the topmost terminal and current symbol (in presentations a,b)
@@ -308,20 +381,32 @@ void parse_expression(void) {
             break;
         }
 
-        switch (precedence_table[top_terminal][input]) {
+        switch (precedence_table[top_terminal.symbol][input]) {
         case '<':
             insertMark(&stack, top_terminal);
 
+            // Case of function call
+            // parse_function_call returns Node *, which is then saved to item
             if (current.type == TOKEN_ID && next.type == TOKEN_LPAREN) {
-                parse_function_call();
-                pushStack(&stack, S_OPERAND);
+                StackItem item = {S_OPERAND, 0, parse_function_call()};
+                pushStack(&stack, item);
 
+                // Case for list literal
+                // parse_list_literal returns Node *, which is then saved to item
             } else if (current.type == TOKEN_LIST && next.type == TOKEN_LPAREN) {
-                parse_list_literal();
-                pushStack(&stack, S_OPERAND);
+                StackItem item = {S_OPERAND, 0, parse_list_literal()};
+                pushStack(&stack, item);
 
+                // Other cases
             } else {
-                pushStack(&stack, input);
+                StackItem item = {input, current.type, NULL};
+
+                // If the item is operand (variable, int, double, ...), then we have to create
+                // leafNode
+                if (input == S_OPERAND) {
+                    item.node = LeafNode();
+                }
+                pushStack(&stack, item);
                 next_token();
             }
             break;
@@ -331,7 +416,8 @@ void parse_expression(void) {
             break;
 
         case '=':
-            pushStack(&stack, input);
+            StackItem item = {input, current.type, NULL};
+            pushStack(&stack, item);
             next_token();
             break;
 
@@ -340,5 +426,7 @@ void parse_expression(void) {
         }
     }
 
+    Node *root = stack.items[1].node;
     freeStack(&stack);
+    return root;
 }

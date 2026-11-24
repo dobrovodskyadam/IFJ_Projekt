@@ -1,10 +1,10 @@
-// @file error.c
-// @brief Helper module for printing and managing error codes of parser
-// @date 06-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file error.c
+/// @brief Helper module for printing and managing error codes of parser
+/// @date 06-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 #include "error.h"
 #include <stdarg.h>

@@ -1,33 +1,35 @@
-// @file parser.c
-// @brief
-// @date 23-10-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file parser.c
+/// @brief
+/// @date 23-10-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
 
 // TODO: Add brief desriptions to the functions
 
 #include "parser.h"
+#include "ast.h"
 #include "error.h"
 #include "expression_parser.h"
 #include "scanner.h"
+#include "semantic.h"
 #include "symtable.h"
 
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 ScannerData scanner;
 Token previous, current, next;
 
 
-// @brief
+/// @brief
 void fill_tokens(void) {
     next_token();
     next_token();
 }
 
-// @brief
+/// @brief
 void next_token(void) {
     previous = current;
     current = next;
@@ -39,19 +41,19 @@ void next_token(void) {
     }
 }
 
-// @brief
+/// @brief
 void syntax_error(const char *expected) {
     if (previous.line == 0) {
-        error_exit(ERR_SYNTAX, current.line, "Expected %s, got %s", expected,
+        error_exit(ERR_SYNTAX, current.line, "expected %s, got %s", expected,
                    tokenTypeName(current.type));
     }
 
-    error_exit(ERR_SYNTAX, current.line, "Expected %s after %s, got %s", expected,
+    error_exit(ERR_SYNTAX, current.line, "expected %s after %s, got %s", expected,
                tokenTypeName(previous.type), tokenTypeName(current.type));
 }
 
 
-// @brief
+/// @brief
 void expect(TokenType type) {
     if (current.type != type) {
         syntax_error(tokenTypeName(type));
@@ -60,7 +62,14 @@ void expect(TokenType type) {
     next_token();
 }
 
-// @brief
+char *expect_id(void) {
+    expect(TOKEN_ID);
+    char *name = previous.value.str_val;
+    previous.value.str_val = NULL;
+    return name;
+}
+
+/// @brief
 bool is_expression_start(TokenType type) {
     switch (type) {
     case TOKEN_ID:
@@ -79,20 +88,25 @@ bool is_expression_start(TokenType type) {
     }
 }
 
-// @brief Parse each nonterminal
-void parse_start(void) {
+/// @brief Parse each nonterminal
+Node *parse_start(void) {
+    Node *ptr = ASTNewNode(NODE_PROGRAM, current.line);
+    NodeListInit(&ptr->data.program_data.definitions);
+
     expect(TOKEN_IMPORT);
     expect(TOKEN_IFJ);
     expect(TOKEN_EOL);
-    parse_list_def();
+    parse_list_def(&ptr->data.program_data.definitions);
     expect(TOKEN_EOF);
+
+    return ptr;
 }
 
-// @brief
-void parse_list_def(void) {
+/// @brief
+void parse_list_def(NodeList *definitions) {
     if (current.type == TOKEN_MAIN || current.type == TOKEN_DEF) {
-        parse_def();
-        parse_list_def();
+        NodeListAppend(definitions, parse_def());
+        parse_list_def(definitions);
     } else if (current.type == TOKEN_EOF) {
         return;
     } else {
@@ -100,36 +114,41 @@ void parse_list_def(void) {
     }
 }
 
-// @brief
-void parse_def(void) {
-    parse_opt_main();
+/// @brief
+Node *parse_def(void) {
+    Node *ptr = ASTNewNode(NODE_FUNCTION_DEF, current.line);
+
+    ptr->data.function_def_data.is_main = parse_opt_main();
     expect(TOKEN_DEF);
-    expect(TOKEN_ID);
+    ptr->data.function_def_data.name = expect_id();
     expect(TOKEN_LPAREN);
-    parse_list_params();
+    ptr->data.function_def_data.params = parse_list_params();
     expect(TOKEN_RPAREN);
-    parse_opt_type();
+    ptr->data.function_def_data.return_type = parse_opt_type();
     expect(TOKEN_ASSIGN);
-    parse_function_body();
+    ptr->data.function_def_data.body = parse_function_body();
+
+    return ptr;
 }
 
-// @brief
-void parse_opt_main(void) {
+/// @brief
+bool parse_opt_main(void) {
     switch (current.type) {
     case TOKEN_MAIN:
         expect(TOKEN_MAIN);
         parse_opt_main_space();
-        break;
+        return true;
 
     case TOKEN_DEF:
-        break;
+        return false;
 
     default:
         syntax_error("TOKEN_MAIN or TOKEN_DEF");
+        return false;
     }
 }
 
-// @brief
+/// @brief
 void parse_opt_main_space(void) {
     switch (current.type) {
     case TOKEN_EOL:
@@ -144,12 +163,16 @@ void parse_opt_main_space(void) {
     }
 }
 
-// @brief
-void parse_opt_type(void) {
+/// @brief
+Type parse_opt_type(void) {
+    Type type;
+    type.elem = NULL;
+    type.kind = TYPE_UNDEF;
+
     switch (current.type) {
     case TOKEN_COLON:
         expect(TOKEN_COLON);
-        parse_type();
+        type = parse_type();
         break;
 
     case TOKEN_ASSIGN:
@@ -158,14 +181,19 @@ void parse_opt_type(void) {
     default:
         syntax_error("TOKEN_COLON or TOKEN_ASSIGN");
     }
+
+    return type;
 }
 
-// @brief
-void parse_list_params(void) {
+/// @brief
+NodeList parse_list_params(void) {
+    NodeList params;
+    NodeListInit(&params);
+
     switch (current.type) {
     case TOKEN_ID:
-        parse_parameter();
-        parse_more_list_params();
+        NodeListAppend(&params, parse_parameter());
+        parse_more_list_params(&params);
         break;
 
     case TOKEN_RPAREN:
@@ -174,22 +202,28 @@ void parse_list_params(void) {
     default:
         syntax_error("TOKEN_ID or TOKEN_RPAREN");
     }
+
+    return params;
 }
 
-// @brief
-void parse_parameter(void) {
-    expect(TOKEN_ID);
+/// @brief
+Node *parse_parameter(void) {
+    Node *ptr = ASTNewNode(NODE_PARAMETER, current.line);
+
+    ptr->data.param_data.name = expect_id();
     expect(TOKEN_COLON);
-    parse_type();
+    ptr->data.param_data.type = parse_type();
+
+    return ptr;
 }
 
-// @brief
-void parse_more_list_params(void) {
+/// @brief
+void parse_more_list_params(NodeList *params) {
     switch (current.type) {
     case TOKEN_COMMA:
         expect(TOKEN_COMMA);
-        parse_parameter();
-        parse_more_list_params();
+        NodeListAppend(params, parse_parameter());
+        parse_more_list_params(params);
         break;
 
     case TOKEN_RPAREN:
@@ -200,172 +234,233 @@ void parse_more_list_params(void) {
     }
 }
 
-void parse_function_body(void) {
+Node *parse_function_body(void) {
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
-        parse_block();
+        return parse_block();
     } else if (current.type == TOKEN_IF || is_expression_start(current.type)) {
-        parse_if_or_expr();
+        return parse_if_or_expr();
     } else {
         syntax_error("TOKEN_EOL, expression or if");
+        return NULL;
     }
 }
 
-// @brief
-void parse_block(void) {
+/// @brief
+Node *parse_block(void) {
+    Node *ptr = ASTNewNode(NODE_BLOCK, current.line);
+    NodeListInit(&ptr->data.block_data.statements);
+
     expect(TOKEN_INDENT);
-    parse_statement_list();
+    parse_statement_list(&ptr->data.block_data.statements);
     expect(TOKEN_DEDENT);
+
+    return ptr;
 }
 
-// @brief
-void parse_if_or_expr(void) {
+/// @brief
+Node *parse_if_or_expr(void) {
+    Node *ptr = NULL;
+
     if (current.type == TOKEN_IF) {
-        parse_if_statement();
+        ptr = parse_if_statement();
     } else if (is_expression_start(current.type)) {
-        parse_expression();
+        ptr = parse_expression();
         parse_statement_end();
     } else {
         syntax_error("expression or if statement");
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_type(void) {
+/// @brief
+Type parse_type(void) {
+    Type type;
+    type.kind = TYPE_UNKNOWN, type.elem = NULL;
+
     switch (current.type) {
     case TOKEN_UNIT:
+        type.kind = TYPE_UNIT;
+        next_token();
+        break;
+
     case TOKEN_KW_INT:
+        type.kind = TYPE_INT;
+        next_token();
+        break;
+
     case TOKEN_BOOLEAN:
+        type.kind = TYPE_BOOL;
+        next_token();
+        break;
+
     case TOKEN_KW_DOUBLE:
+        type.kind = TYPE_DOUBLE;
+        next_token();
+        break;
+
     case TOKEN_KW_STRING:
+        type.kind = TYPE_STRING;
         next_token();
         break;
 
     case TOKEN_LIST:
         expect(TOKEN_LIST);
         expect(TOKEN_LBRACKET);
-        parse_type();
+
+        type.kind = TYPE_LIST;
+        type.elem = TypeInit(current.line);
+        *type.elem = parse_type();
+
         expect(TOKEN_RBRACKET);
         break;
 
     default:
         syntax_error("type");
     }
+
+    return type;
 }
 
-// @brief
-void parse_if_statement(void) {
+/// @brief
+Node *parse_if_statement(void) {
+    Node *ptr = ASTNewNode(NODE_IF_STATEMENT, current.line);
     expect(TOKEN_IF);
-    parse_expression();
+    ptr->data.if_data.condition = parse_expression();
     expect(TOKEN_THEN);
-    parse_st_then_part();
+    parse_st_then_part(ptr);
+
+    return ptr;
 }
 
-// @brief
-void parse_statement_list(void) {
-    parse_statement();
-    parse_statement_list_rest();
+/// @brief
+void parse_statement_list(NodeList *statements) {
+    NodeListAppend(statements, parse_statement());
+    parse_statement_list_rest(statements);
 }
 
-// @brief
+/// TODO
+/// @brief
 void parse_statement_end(void) {
-    if (current.type == TOKEN_EOL || current.type == TOKEN_SEPARATOR) {
+    if (current.type == TOKEN_EOL) {
         next_token();
+    } else if (current.type == TOKEN_SEPARATOR) {
+        next_token();
+        while (current.type == TOKEN_SEPARATOR) {
+            next_token();
+        }
+
+        if (current.type == TOKEN_EOL) {
+            next_token();
+        }
     } else {
         syntax_error("end of line or ';'");
     }
 }
 
-// @brief
-void parse_st_then_part(void) {
+/// @brief
+void parse_st_then_part(Node *ptr) {
     if (current.type == TOKEN_EOL) {
         next_token();
-        parse_block();
-        parse_st_opt_else();
+        ptr->data.if_data.then_part = parse_block();
+        ptr->data.if_data.else_part = parse_st_opt_else();
+
     } else if (current.type == TOKEN_RETURN) {
+        Node *return_ptr = ASTNewNode(NODE_RETURN, current.line);
         expect(TOKEN_RETURN);
-        parse_expression();
-        parse_st_after_inline_part();
+        return_ptr->data.return_data.value = parse_expression();
+        ptr->data.if_data.then_part = return_ptr;
+        ptr->data.if_data.else_part = parse_st_after_inline_part();
+
     } else if (is_expression_start(current.type)) {
-        parse_expression();
-        parse_st_after_inline_part();
+        ptr->data.if_data.then_part = parse_expression();
+        ptr->data.if_data.else_part = parse_st_after_inline_part();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
 }
 
-// @brief
-void parse_statement(void) {
+/// @brief
+Node *parse_statement(void) {
+    Node *ptr = NULL;
+
     switch (current.type) {
     case TOKEN_ID:
         if (next.type == TOKEN_ASSIGN) {
-            parse_assignment();
+            ptr = parse_assignment();
         } else {
-            parse_expression();
+            ptr = parse_expression();
             parse_statement_end();
         }
         break;
 
     case TOKEN_IF:
-        parse_if_statement();
+        ptr = parse_if_statement();
         break;
 
     case TOKEN_WHILE:
-        parse_while_statement();
+        ptr = parse_while_statement();
         break;
 
     case TOKEN_FOR:
-        parse_for_statement();
+        ptr = parse_for_statement();
         break;
 
     case TOKEN_RETURN:
-        parse_return();
+        ptr = parse_return();
         break;
 
     case TOKEN_VAL:
     case TOKEN_VAR:
-        parse_variable_declaration();
+        ptr = parse_variable_declaration();
         break;
 
     default:
         if (is_expression_start(current.type)) {
-            parse_expression();
+            ptr = parse_expression();
             parse_statement_end();
         } else {
             syntax_error("statement");
         }
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_statement_list_rest(void) {
+/// @brief
+void parse_statement_list_rest(NodeList *statements) {
     if (current.type == TOKEN_DEDENT) {
         return;
     }
 
-    parse_statement();
-    parse_statement_list_rest();
+    NodeListAppend(statements, parse_statement());
+    parse_statement_list_rest(statements);
 }
 
-// @brief
-void parse_st_opt_else(void) {
+/// @brief
+Node *parse_st_opt_else(void) {
     if (current.type == TOKEN_ELSE) {
         expect(TOKEN_ELSE);
-        parse_st_else_part();
+        return parse_st_else_part();
     }
+
+    return NULL;
 }
 
-// @brief
-void parse_st_after_inline_part(void) {
+/// @brief
+Node *parse_st_after_inline_part(void) {
+    Node *ptr = NULL;
+
     switch (current.type) {
     case TOKEN_ELSE:
         expect(TOKEN_ELSE);
-        parse_st_else_part();
+        ptr = parse_st_else_part();
         break;
 
     case TOKEN_EOL:
         expect(TOKEN_EOL);
-        parse_st_opt_else();
+        ptr = parse_st_opt_else();
         break;
 
     case TOKEN_SEPARATOR:
@@ -375,106 +470,132 @@ void parse_st_after_inline_part(void) {
     default:
         syntax_error("TOKEN_ELSE, TOKEN_EOL or TOKEN_SEPARATOR");
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_variable_declaration(void) {
-    parse_var_or_val();
-    expect(TOKEN_ID);
-    parse_opt_type();
+/// @brief
+Node *parse_variable_declaration(void) {
+    Node *ptr = ASTNewNode(NODE_VARIABLE_DECLARATION, current.line);
+
+    ptr->data.var_decl_data.is_val = parse_var_or_val();
+    ptr->data.var_decl_data.name = expect_id();
+    ptr->data.var_decl_data.type = parse_opt_type();
     expect(TOKEN_ASSIGN);
-    parse_value_or_expr();
+    ptr->data.var_decl_data.value = parse_value_or_expr();
+
+    return ptr;
 }
 
-// @brief
-void parse_assignment(void) {
-    expect(TOKEN_ID);
+/// @brief
+Node *parse_assignment(void) {
+    Node *ptr = ASTNewNode(NODE_ASSIGN, current.line);
+    ptr->data.assign_data.name = expect_id();
     expect(TOKEN_ASSIGN);
-    parse_value_or_expr();
+    ptr->data.assign_data.value = parse_value_or_expr();
+
+    return ptr;
 }
 
-// @brief
-void parse_return(void) {
+/// @brief
+Node *parse_return(void) {
+    Node *ptr = ASTNewNode(NODE_RETURN, current.line);
     expect(TOKEN_RETURN);
-    parse_return_argument();
+    ptr->data.return_data.value = parse_return_argument();
+
+    return ptr;
 }
 
-// @brief
-void parse_while_statement(void) {
+/// @brief
+Node *parse_while_statement(void) {
+    Node *ptr = ASTNewNode(NODE_WHILE_CYCLE, current.line);
+
     expect(TOKEN_WHILE);
-    parse_expression();
+    ptr->data.while_data.condition = parse_expression();
     expect(TOKEN_DO);
     expect(TOKEN_EOL);
-    parse_block();
+    ptr->data.while_data.body = parse_block();
+
+    return ptr;
 }
 
-// @brief
-void parse_for_statement(void) {
+/// @brief
+Node *parse_for_statement(void) {
+    Node *ptr = ASTNewNode(NODE_FOR_CYCLE, current.line);
+
     expect(TOKEN_FOR);
-    parse_for_header();
+    parse_for_header(ptr);
     expect(TOKEN_DO);
     expect(TOKEN_EOL);
-    parse_block();
+    ptr->data.for_data.body = parse_block();
+
+    return ptr;
 }
 
-// @brief
-void parse_value_or_expr(void) {
+/// @brief
+Node *parse_value_or_expr(void) {
+    Node *ptr = NULL;
+
     switch (current.type) {
     case TOKEN_IF:
-        parse_if_value();
+        ptr = parse_if_value();
         break;
     default:
         if (is_expression_start(current.type)) {
-            parse_expression();
+            ptr = parse_expression();
             parse_statement_end();
         } else {
             syntax_error("TOKEN_IF or expression");
         }
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_var_or_val(void) {
+/// @brief
+bool parse_var_or_val(void) {
     switch (current.type) {
     case TOKEN_VAL:
         expect(TOKEN_VAL);
-        break;
+        return true;
     case TOKEN_VAR:
         expect(TOKEN_VAR);
-        break;
+        return false;
     default:
         syntax_error("TOKEN_VAL or TOKEN_VAR");
+        return false;
     }
 }
 
-// @brief
-void parse_return_argument(void) {
+/// @brief
+Node *parse_return_argument(void) {
     switch (current.type) {
     case TOKEN_EOL:
     case TOKEN_SEPARATOR:
         parse_statement_end();
-        break;
+        return NULL;
     default:
         if (is_expression_start(current.type) || current.type == TOKEN_IF) {
-            parse_value_or_expr();
+            return parse_value_or_expr();
         } else {
             syntax_error("TOKEN_EOL, TOKEN_SEPARATOR or expression");
+            return NULL;
         }
     }
 }
 
-// @brief
-void parse_for_header(void) {
+/// @brief
+void parse_for_header(Node *ptr) {
     switch (current.type) {
     case TOKEN_ID:
-        parse_generator();
+        parse_generator(ptr);
         break;
     case TOKEN_EOL:
         expect(TOKEN_EOL);
         expect(TOKEN_INDENT);
-        parse_generator();
+        parse_generator(ptr);
         expect(TOKEN_EOL);
-        parse_list_guards();
+        parse_list_guards(&ptr->data.for_data.guards);
         expect(TOKEN_DEDENT);
         break;
     default:
@@ -482,165 +603,195 @@ void parse_for_header(void) {
     }
 }
 
-// @brief
-void parse_list_guards(void) {
+/// @brief
+void parse_list_guards(NodeList *guards) {
     switch (current.type) {
     case TOKEN_IF:
-        parse_guard();
+        NodeListAppend(guards, parse_guard());
         expect(TOKEN_EOL);
-        parse_list_guards();
+        parse_list_guards(guards);
         break;
     case TOKEN_DEDENT:
         break;
     default:
-        syntax_error("");
+        syntax_error("Expected TOKEN_IF or TOKEN_DEDENT");
     }
 }
 
-// @brief
-void parse_guard(void) {
+/// @brief
+Node *parse_guard(void) {
     expect(TOKEN_IF);
-    parse_expression();
+    return parse_expression();
 }
 
-// @brief
-void parse_generator(void) {
-    expect(TOKEN_ID);
+/// @brief
+void parse_generator(Node *ptr) {
+    ptr->data.for_data.name = expect_id();
     expect(TOKEN_GEN_ARROW);
-    parse_expression();
+    ptr->data.for_data.range = parse_expression();
 }
 
-// @brief
-void parse_st_else_part(void) {
+/// @brief
+Node *parse_st_else_part(void) {
+    Node *ptr = NULL;
+
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
-        parse_block();
+        ptr = parse_block();
     } else if (current.type == TOKEN_IF) {
-        parse_if_statement();
+        ptr = parse_if_statement();
     } else if (current.type == TOKEN_RETURN) {
-        parse_return();
+        ptr = parse_return();
     } else if (is_expression_start(current.type)) {
-        parse_expression();
+        ptr = parse_expression();
         parse_statement_end();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_if_value(void) {
+/// @brief
+Node *parse_if_value(void) {
+    Node *ptr = ASTNewNode(NODE_IF_VALUE, current.line);
     expect(TOKEN_IF);
-    parse_expression();
+    ptr->data.if_data.condition = parse_expression();
     expect(TOKEN_THEN);
-    parse_value_then_part();
+    parse_value_then_part(ptr);
+    return ptr;
 }
 
-// @brief
-void parse_value_then_part(void) {
+/// @brief
+void parse_value_then_part(Node *ptr) {
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
-        parse_block();
+        ptr->data.if_data.then_part = parse_block();
         expect(TOKEN_ELSE);
-        parse_value_else_part();
+        ptr->data.if_data.else_part = parse_value_else_part();
     } else if (is_expression_start(current.type)) {
-        parse_expression();
-        parse_value_after_inline_part();
+        ptr->data.if_data.then_part = parse_expression();
+        ptr->data.if_data.else_part = parse_value_after_inline_part();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
 }
 
-// @brief
-void parse_value_after_inline_part(void) {
+
+/// @brief
+Node *parse_value_after_inline_part(void) {
+    Node *ptr = NULL;
+
     switch (current.type) {
     case TOKEN_ELSE:
         expect(TOKEN_ELSE);
-        parse_value_else_part();
+        ptr = parse_value_else_part();
         break;
+
     case TOKEN_EOL:
         expect(TOKEN_EOL);
         expect(TOKEN_ELSE);
-        parse_value_else_part();
+        ptr = parse_value_else_part();
         break;
+
     default:
         syntax_error("TOKEN_ELSE or TOKEN_EOL");
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_value_else_part(void) {
+/// @brief
+Node *parse_value_else_part(void) {
+    Node *ptr = NULL;
+
     if (current.type == TOKEN_EOL) {
         expect(TOKEN_EOL);
-        parse_block();
+        ptr = parse_block();
     } else if (current.type == TOKEN_IF) {
-        parse_if_value();
+        ptr = parse_if_value();
     } else if (is_expression_start(current.type)) {
-        parse_expression();
+        ptr = parse_expression();
         parse_statement_end();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
+
+    return ptr;
 }
 
-// @brief
-void parse_function_call(void) {
-    expect(TOKEN_ID);
+/// @brief
+Node *parse_function_call(void) {
+    Node *ptr = ASTNewNode(NODE_FUNCTION_CALL, current.line);
+    ptr->data.call_data.name = expect_id();
     expect(TOKEN_LPAREN);
-    parse_list_arguments();
+    parse_list_arguments(&ptr->data.call_data.arguments);
     expect(TOKEN_RPAREN);
+
+    return ptr;
 }
 
-// @brief
-void parse_list_arguments(void) {
+/// @brief
+void parse_list_arguments(NodeList *arguments) {
     if (current.type == TOKEN_RPAREN) {
         return;
 
     } else if (is_expression_start(current.type)) {
-        parse_argument();
-        parse_more_list_arguments();
+        NodeListAppend(arguments, parse_argument());
+        parse_more_list_arguments(arguments);
     } else {
         syntax_error("TOKEN_RPAREN or expression");
     }
 }
 
-// @brief
-void parse_more_list_arguments(void) {
+/// @brief
+void parse_more_list_arguments(NodeList *arguments) {
     switch (current.type) {
     case TOKEN_RPAREN:
         break;
     case TOKEN_COMMA:
         expect(TOKEN_COMMA);
-        parse_argument();
-        parse_more_list_arguments();
+        NodeListAppend(arguments, parse_argument());
+        parse_more_list_arguments(arguments);
         break;
     default:
         syntax_error("TOKEN_RPAREN or TOKEN_COMMA");
     }
 }
 
-// @brief
-void parse_argument(void) {
-    parse_expression();
+/// @brief
+Node *parse_argument(void) {
+    return parse_expression();
 }
 
-void parse_list_literal(void) {
+/// @brief
+Node *parse_list_literal(void) {
+    Node *ptr = ASTNewNode(NODE_LIST_LITERAL, current.line);
     expect(TOKEN_LIST);
     expect(TOKEN_LPAREN);
-    parse_list_arguments();
+    parse_list_arguments(&ptr->data.list_data.items);
     expect(TOKEN_RPAREN);
+
+    return ptr;
 }
 
-// @brief
-int parse(void) {
+/// @brief
+Node *parse(void) {
     initScannerData(&scanner);
     fill_tokens();
-    parse_start();
-    return 0;
+    return parse_start();
 }
 
-// @brief
+/// @brief
 int main(void) {
-    if (parse() == 0) {
-        fprintf(stderr, "Syntax is okay\n");
-    }
+    Node *root = parse();
+
+#ifdef DEBUG
+    ASTprint(root, 0);
+#endif
+
+    semantic_analyze(root);
+    ASTFree(root);
+    TypeFreeAll();
+    return 0;
 }

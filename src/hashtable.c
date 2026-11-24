@@ -13,20 +13,6 @@
 
 #include "hashtable.h"
 
-/// @brief Item of hashtable, a single symbol
-/// @param id Identifier of symbol
-/// @param type viz enum{...} item_type in hashtable.h
-/// @param modif True == modifiable, False == constant
-/// @param id_cnt State of id_cnt from symtable in moment of adding
-/// @param used 0 == Not used, 1 == Used, 2 == Deleted
-struct htab_item {
-    char id[MAX_ITEM_ID];
-    item_type type;
-    bool modif;
-    unsigned id_cnt;
-    item_used used;
-};
-
 /// @brief Standart hash function, creates hash from id
 /// @param id Identifier of symbol
 /// @return Created hash
@@ -54,12 +40,11 @@ htab_t htab_init(void) {
 /// @brief Adds item to hashtable
 /// @param tab Hashtable
 /// @param id Identifier of symbol
-/// @param type viz enum{...} item_type in hashtable.h
-/// @param modif True == modifiable, False == constant
+/// @param decl Declaration node of the symbol
 /// @param id_cnt Current id_cnt
 /// @return True if successfully added
-bool hash_item_add(htab_t tab, char *id, item_type type, bool modif, int id_cnt) {
-    if (tab == NULL || id == NULL || strlen(id) >= MAX_ITEM_ID || hash_item_lookup(tab, id) != NULL)
+bool hash_item_add(htab_t tab, char *id, struct Node *decl, int id_cnt) {
+    if (tab == NULL || id == NULL || hash_item_lookup(tab, id) != NULL)
         return false;
 
     unsigned hash = hash_func(id);
@@ -74,12 +59,11 @@ bool hash_item_add(htab_t tab, char *id, item_type type, bool modif, int id_cnt)
         return false;
     unsigned idx = hash % MAX_HTAB_ITEMS;
 
-    strcpy(tab[idx].id, id);
-    tab[idx].type = type;
-    tab[idx].modif = modif;
+    // Store the pointer
+    tab[idx].id = id;
+    tab[idx].decl = decl;
     tab[idx].id_cnt = id_cnt;
     tab[idx].used = USE;
-
     return true;
 }
 

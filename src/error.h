@@ -1,10 +1,13 @@
-// @file error.h
-// @brief Header file with Error Codes
-// @date 06-11-2026
-//
-// @author Lukas Sofka (xsofkal00)
-// @author Email: xsofkal00@stud.fit.vutbr.cz
-// Faculty of Information Technology, Brno University of Technology
+/// @file error.h
+/// @brief Header file with Error Codes
+/// @date 06-11-2026
+///
+/// @author Lukas Sofka (xsofkal00)
+/// @author Email: xsofkal00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
+
+#ifndef ERROR_H
+#define ERROR_H
 
 // clang-format off
 typedef enum {
@@ -21,3 +24,5 @@ typedef enum {
 } ErrorCode;
 
 void error_exit(ErrorCode code, unsigned line, const char *fmt, ...);
+
+#endif

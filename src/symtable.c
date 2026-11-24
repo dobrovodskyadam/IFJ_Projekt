@@ -7,10 +7,10 @@
 /// @author Email: xgrubet01@stud.fit.vut.cz
 /// Faculty of Information Technology, Brno University of Technology
 
-
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ast.h"
 #include "hashtable.h"
 #include "symtable.h"
 
@@ -32,20 +32,6 @@ struct symtab {
     symtab_item_t *top;
     unsigned int id_cnt;
     int depth;
-};
-
-/// @brief Item of hashtable, a single symbol
-/// @param id Identifier of symbol
-/// @param type viz enum{...} item_type in hashtable.h
-/// @param modif True == modifiable, False == constant
-/// @param id_cnt State of id_cnt from symtable in moment of adding
-/// @param used 0 == Not used, 1 == Used, 2 == Deleted
-struct htab_item {
-    char id[MAX_ITEM_ID];
-    item_type type;
-    bool modif;
-    unsigned id_cnt;
-    item_used used;
 };
 
 /// @brief Initialization of table of symbols,
@@ -100,11 +86,11 @@ void scope_rm(symtab_t *stab) {
 /// @param type Typo of symbol
 /// @param modif 1 == modifiable, 0 == not
 /// @return True for successfully added item
-bool item_add(symtab_t *stab, char *id, item_type type, bool modif) {
+bool item_add(symtab_t *stab, char *id, Node *decl) {
     if (stab == NULL || stab->top == NULL)
         return false;
 
-    if (hash_item_add(stab->top->scope, id, type, modif, stab->id_cnt) == false)
+    if (hash_item_add(stab->top->scope, id, decl, stab->id_cnt) == false)
         return false;
 
     stab->id_cnt++;
@@ -143,7 +129,7 @@ void item_del(symtab_t *stab, char *id) {
 /// @param id Identifier of symbol
 /// @return Item_t structure, if item_t.scope == -1, symbol not found
 item_t get_item(symtab_t *stab, char *id) {
-    item_t item = {-1, VAR, false};
+    item_t item = {-1, 0, false};
     htab_item_t *hash_item;
 
     if (item_lookup(stab, id) == false) {
@@ -157,8 +143,8 @@ item_t get_item(symtab_t *stab, char *id) {
         scope = scope->next;
     }
 
-    item.type = hash_item->type;
-    item.modif = hash_item->modif;
+    item.id_cnt = hash_item->id_cnt;
+    item.decl = hash_item->decl;
     return item;
 }
 

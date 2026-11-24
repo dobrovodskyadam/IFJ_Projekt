@@ -14,9 +14,9 @@ CXXFLAGS = -Wall -Wextra -I$(SRC_DIR)
 
 
 # Debug flags (uncomment if needed)
-DEBUG_CFLAGS = -g
-DEBUG_CFLAGS += -DDEBUG
+DEBUG_CFLAGS = -g -O0
 DEBUG_CFLAGS += -DDEBUG_MSG
+# DEBUG_CFLAGS += -DDEBUG
 
 
 SRC_DIR = src
