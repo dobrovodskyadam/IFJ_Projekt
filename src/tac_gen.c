@@ -7,6 +7,73 @@
 static int temp_counter = 1;
 static int label_counter = 1;
 static int current_func_end_label = -1;
+static ScopeVar *scope_vars = NULL;
+static int *scope_marks = NULL;
+static int scope_cnt = 0;
+static int scope_cap = 0;
+static int mark_cnt = 0;
+static int mark_cap = 0;
+static int unique_counter = 1;
+
+static void scope_push(void)
+{
+    if(mark_cnt == mark_cap)
+    {
+        mark_cap = mark_cap == 0 ? 16 : mark_cap * 2;
+        int *p = realloc(scope_marks, mark_cap * sizeof(int));
+        if(p==NULL)
+        {
+            error_exit(ERR_INTERNAL, 0, "Memory allocation error in scope_push");
+        } 
+        scope_marks = p;
+    }
+    scope_marks[mark_cnt++] = scope_cnt;
+}
+
+static void scope_pop(void)
+{
+    if(mark_cnt > 0)
+    {
+        scope_cnt = scope_marks[--mark_cnt];
+    }
+}
+
+static const char *scope_declare(const char *name)
+{
+    if(scope_cnt == scope_cap)
+    {
+        scope_cap = scope_cap == 0 ? 32 : scope_cap * 2;
+        ScopeVar *p = realloc(scope_vars,scope_cap*sizeof(ScopeVar));
+        if(p == NULL)
+            error_exit(ERR_INTERNAL, 0, "Memory allocation error in scope_declare");
+        
+        scope_vars = p;
+    }
+    char *uni = malloc(strlen(name) +16 );
+    if(uni == NULL)
+        error_exit(ERR_INTERNAL, 0, "Memory allocation error in scope_declare");
+    sprintf(uni, "%s$%d", name, unique_counter++);
+    scope_vars[scope_cnt].name = name;
+    scope_vars[scope_cnt].unique = uni;
+    scope_cnt++;
+    return uni;
+}
+
+static const char *scope_lookup(const char *name)
+{
+    for(int i = scope_cnt - 1; i >=0; i-- )
+    {
+        if(strcmp(scope_vars[i].name, name) == 0)
+            return scope_vars[i].unique;
+    }
+    return name;
+}
+
+static void scope_reset(void)
+{
+    scope_cnt = 0;
+    mark_cnt  = 0;
+}
 
 void tac_list_init(TacList *list)
 {
@@ -233,7 +300,7 @@ Operand tac_gen_exp(Node *node, TacList *list)
     }
     case NODE_ID:
     {
-        return op_var(node->data.variable_name);
+        return op_var(scope_lookup(node->data.variable_name));
     }
     case NODE_EXPRESSION:
     {
@@ -405,7 +472,7 @@ Operand tac_gen_exp(Node *node, TacList *list)
     {
         if (node->data.un_op_data.op == TOKEN_MINUS)
         {
-             Operand zero = (node->data.un_op_data.operand->type.kind == TYPE_DOUBLE)
+            Operand zero = (node->data.un_op_data.operand->type.kind == TYPE_DOUBLE)
                            ? op_double(0.0) : op_int(0);        
             Operand val = tac_gen_exp(node->data.un_op_data.operand,list);
             Operand temp_re = op_temp(new_temp());
@@ -474,6 +541,8 @@ void tac_gen_statement(Node *node, TacList *list)
     }
     case NODE_FUNCTION_DEF:
     {
+        scope_reset(); 
+        scope_push();
         FunctionDefData *fn = &node->data.function_def_data;
         int end_label = new_label();
         current_func_end_label = end_label;
@@ -489,7 +558,8 @@ void tac_gen_statement(Node *node, TacList *list)
             Node *param_node = fn->params.list[i];
             char slot_buf[32];
             snprintf(slot_buf, sizeof(slot_buf), "%%%u", i + 1);
-            add_instr(list, TAC_MOVE, op_var(param_node->data.param_data.name),
+            const char *uni = scope_declare(param_node->data.param_data.name);
+            add_instr(list, TAC_MOVE, op_var(uni),
                       op_var(copy_str(slot_buf)), op_none());
         }
 
@@ -506,7 +576,7 @@ void tac_gen_statement(Node *node, TacList *list)
     }
     case NODE_ASSIGN:
     {
-        Operand var_op = op_var(node->data.assign_data.name);
+        Operand var_op = op_var(scope_lookup(node->data.assign_data.name));
         Operand op_val = tac_gen_exp(node->data.assign_data.value, list);
 
         add_instr(list,TAC_MOVE,var_op,op_val,op_none());
@@ -514,23 +584,26 @@ void tac_gen_statement(Node *node, TacList *list)
     }
     case NODE_VARIABLE_DECLARATION:
     {
-        Operand var_op = op_var(node->data.var_decl_data.name);
+        //Operand var_op = op_var(node->data.var_decl_data.name);
         if(node->data.var_decl_data.value != NULL)
         {
             Node *value = node->data.var_decl_data.value;
             Operand val_op = tac_gen_exp(value, list);
             val_op = coerce(val_op, &value->type,
                         node->data.var_decl_data.type.kind, list);
+            Operand var_op = op_var(scope_declare(node->data.var_decl_data.name));
             add_instr(list, TAC_MOVE, var_op, val_op, op_none());
         }
         break;
     }
     case NODE_BLOCK:
     {
+        scope_push();
         for (unsigned int i = 0; i < node->data.block_data.statements.count; i++)
         {
             tac_gen_statement(node->data.block_data.statements.list[i], list);
         }
+        scope_pop();
         break;
     }
     case NODE_IF_STATEMENT:
@@ -869,5 +942,7 @@ void tac_gen_reset(void) {
     temp_counter = 1;
     label_counter = 1;
     current_func_end_label = -1;
+    unique_counter = 1;     
+    scope_reset();
 }
 

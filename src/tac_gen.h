@@ -43,6 +43,13 @@ typedef struct
     int capacity;
 }TacList;
 
+typedef struct 
+{
+   const char *name;
+   const char *unique;
+}ScopeVar;
+
+
 void tac_gen_reset(void);
 
 #endif
