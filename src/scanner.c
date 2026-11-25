@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define INDENT_STACK_INIT_CAPACITY 8
+#define TOKEN_BUFFER_INIT_CAPACITY 8
+
 /// @brief Enumeration of all scanner FSM states
 typedef enum {
     STATE_START,
@@ -51,7 +54,7 @@ typedef enum {
 /// @param scanner Pointer to the scanner data structue to initialize
 /// @return 1 if succesfull, otherwise 0
 int initScannerData(ScannerData *scanner) {
-    scanner->stack_capacity = 8;
+    scanner->stack_capacity = INDENT_STACK_INIT_CAPACITY;
     scanner->indent_stack = malloc(scanner->stack_capacity * sizeof(int));
     if (scanner->indent_stack == NULL) {
         return 0;
@@ -84,7 +87,7 @@ int addStackCapacity(ScannerData *scanner) {
 /// @return 1 if succesfull, otherwise 0
 int initTokenString(TokenString *token_buffer) {
     token_buffer->length = 0;
-    token_buffer->capacity = 8;
+    token_buffer->capacity = TOKEN_BUFFER_INIT_CAPACITY;
     token_buffer->str = malloc(token_buffer->capacity * sizeof(char));
 
     if (token_buffer->str == NULL) {
