@@ -61,6 +61,7 @@ int initScannerData(ScannerData *scanner) {
     scanner->dedent = 0;
     scanner->new_line = 1;
     scanner->paren_depth = 0;
+    scanner->last_char = '\n';
     return 1;
 }
 
@@ -112,6 +113,15 @@ int addChar(TokenString *token_buffer, char c) {
     return 1;
 }
 
+int readChar(ScannerData *scanner) {
+    int c = fgetc(stdin);
+    if (c == EOF && scanner->last_char != '\n' && scanner->last_char != EOF) {
+        c = '\n';
+    }
+    scanner->last_char = c;
+    return c;
+}
+
 /// @brief Free allocated memory of the token string buffer
 /// @param token_buffer Pointer to the token string buffer to free
 void freeTokenString(TokenString *token_buffer) {
@@ -145,7 +155,7 @@ void getToken(Token *token, ScannerData *scanner) {
     // implement of Finite State Machine
     while (!token_found) {
         int c;
-        c = fgetc(stdin);
+        c = readChar(scanner);
         switch (state) {
         case STATE_START:
             // cases if is new line

@@ -98,6 +98,7 @@ typedef struct {
     int dedent;
     int new_line;
     int paren_depth;
+    int last_char;
 } ScannerData;
 
 
