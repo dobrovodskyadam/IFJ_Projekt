@@ -63,12 +63,19 @@ typedef enum {
     TOKEN_CONCATENATION,
     TOKEN_UNTIL,
     TOKEN_TO,
-    TOKEN_BY
+    TOKEN_BY,
+    TOKEN_COMMA,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
+    TOKEN_LBRACKET,
+    TOKEN_RBRACKET,
+    TOKEN_COUNT
 } TokenType;
 
 /// @brief Structure representing token
 typedef struct {
     TokenType type;
+    unsigned int line;
     union {
         int int_val;
         double double_val;
@@ -90,6 +97,7 @@ typedef struct {
     int stack_top;
     int dedent;
     int new_line;
+    int paren_depth;
 } ScannerData;
 
 

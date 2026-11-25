@@ -43,7 +43,8 @@ typedef enum {
     STATE_COMMENT_NESTING_AFTER,
     STATE_INDENT,
     STATE_CONCATENATION,
-    STATE_DOT
+    STATE_DOT,
+    STATE_PAREN_INDENT
 } STATE;
 
 /// @brief Initialization of structure to hold scanner information from function getToken
@@ -59,6 +60,7 @@ int initScannerData(ScannerData *scanner) {
     scanner->stack_top = 0;
     scanner->dedent = 0;
     scanner->new_line = 1;
+    scanner->paren_depth = 0;
     return 1;
 }
 
@@ -208,16 +210,25 @@ void getToken(Token *token, ScannerData *scanner) {
                 state = STATE_OR;
             } else if (c == '(') {
                 token->type = TOKEN_LPAREN;
+                scanner->paren_depth++;
                 token_found = 1;
             } else if (c == ')') {
+                if (scanner->paren_depth > 0) {
+                    scanner->paren_depth--;
+                }
                 token->type = TOKEN_RPAREN;
                 token_found = 1;
             } else if (c == '"') {
                 state = STATE_STR_QUOTE1;
             } else if (c == '\n') {
-                token->type = TOKEN_EOL;
-                scanner->new_line = 1;
-                token_found = 1;
+                if (scanner->paren_depth > 0) {
+                    space_count = 0;
+                    state = STATE_PAREN_INDENT;
+                } else {
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
+                }
             } else if (c == EOF) {
                 token->type = TOKEN_EOF;
                 token_found = 1;
@@ -758,9 +769,19 @@ void getToken(Token *token, ScannerData *scanner) {
 
         case STATE_COMMENT:
             if (c == '\n') {
-                token->type = TOKEN_EOL;
-                scanner->new_line = 1;
-                token_found = 1;
+                if (scanner->paren_depth > 0) {
+                    space_count = 0;
+                    has_tab = 0;
+                    state = STATE_PAREN_INDENT;
+                } else if (scanner->new_line == 1) {
+                    space_count = 0;
+                    has_tab = 0;
+                    state = STATE_START;
+                } else {
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
+                }
             } else if (c == EOF) {
                 token->type = TOKEN_EOF;
                 token_found = 1;
@@ -827,9 +848,19 @@ void getToken(Token *token, ScannerData *scanner) {
         case STATE_COMMENT_NESTING_AFTER:
             comment_new_line = 0;
             if (c == '\n') {
-                token->type = TOKEN_EOL;
-                scanner->new_line = 1;
-                token_found = 1;
+                if (scanner->paren_depth > 0) {
+                    space_count = 0;
+                    has_tab = 0;
+                    state = STATE_PAREN_INDENT;
+                } else if (scanner->new_line == 1) {
+                    space_count = 0;
+                    has_tab = 0;
+                    state = STATE_START;
+                } else {
+                    token->type = TOKEN_EOL;
+                    scanner->new_line = 1;
+                    token_found = 1;
+                }
             } else if (isspace(c)) {
                 state = STATE_COMMENT_NESTING_AFTER;
                 // checking if there is another comment
@@ -922,6 +953,51 @@ void getToken(Token *token, ScannerData *scanner) {
                     // indent is same as last indent
                 } else {
                     scanner->new_line = 0;
+                    state = STATE_START;
+                }
+            }
+            break;
+
+        case STATE_PAREN_INDENT:
+            if (c == ' ') {
+                space_count++;
+                state = STATE_PAREN_INDENT;
+            } else if (c == '\t') {
+                has_tab = 1;
+                state = STATE_PAREN_INDENT;
+            } else if (c == '\n') {
+                has_tab = 0;
+                space_count = 0;
+                state = STATE_PAREN_INDENT;
+                // checkin if it comments
+            } else if (c == '/') {
+                int next_c = fgetc(stdin);
+                if (next_c == '/') {
+                    state = STATE_COMMENT;
+                } else if (next_c == '*') {
+                    comment_nesting++;
+                    state = STATE_COMMENT_NESTING;
+                } else {
+                    ungetc(next_c, stdin);
+                    if (has_tab || space_count <= scanner->indent_stack[scanner->stack_top]) {
+                        token->type = TOKEN_ERROR;
+                    } else {
+                        token->type = TOKEN_DIV;
+                    }
+                    token_found = 1;
+                }
+            } else {
+                if (c != ')' && has_tab) {
+                    token->type = TOKEN_ERROR;
+                    token_found = 1;
+                } else if (c != ')' && space_count <= scanner->indent_stack[scanner->stack_top]) {
+                    scanner->paren_depth = 0;
+                    ungetc(c, stdin);
+                    scanner->new_line = 1;
+                    token->type = TOKEN_EOL;
+                    token_found = 1;
+                } else {
+                    ungetc(c, stdin);
                     state = STATE_START;
                 }
             }
