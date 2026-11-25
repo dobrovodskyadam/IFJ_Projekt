@@ -47,6 +47,7 @@ typedef struct
 {
    const char *name;
    const char *unique;
+   DataType type;
 }ScopeVar;
 
 

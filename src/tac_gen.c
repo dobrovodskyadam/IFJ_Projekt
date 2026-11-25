@@ -14,6 +14,8 @@ static int scope_cap = 0;
 static int mark_cnt = 0;
 static int mark_cap = 0;
 static int unique_counter = 1;
+static const Type *current_ret_type = NULL;
+static NodeList *g_defs = NULL;
 
 static void scope_push(void)
 {
@@ -38,7 +40,7 @@ static void scope_pop(void)
     }
 }
 
-static const char *scope_declare(const char *name)
+static const char *scope_declare(const char *name, DataType type)
 {
     if(scope_cnt == scope_cap)
     {
@@ -55,6 +57,7 @@ static const char *scope_declare(const char *name)
     sprintf(uni, "%s$%d", name, unique_counter++);
     scope_vars[scope_cnt].name = name;
     scope_vars[scope_cnt].unique = uni;
+    scope_vars[scope_cnt].type = type;
     scope_cnt++;
     return uni;
 }
@@ -186,16 +189,40 @@ static bool is_value_node(Node *n)
     {
     case NODE_INT: case NODE_DOUBLE: case NODE_STRING: case NODE_BOOLEAN: case NODE_UNIT:
     case NODE_ID: case NODE_EXPRESSION: case NODE_BINARY_OPERATOR:
-    case NODE_UNARY_OPERATOR: case NODE_FUNCTION_CALL:
+    case NODE_UNARY_OPERATOR: case NODE_FUNCTION_CALL: case NODE_IF_VALUE:
         return true;
+    case NODE_IF_STATEMENT:
+        return n->data.if_data.else_part != NULL
+            && n->type.kind != TYPE_UNIT
+            && n->type.kind != TYPE_UNKNOWN
+            && n->type.kind != TYPE_UNDEF;
     default:
         return false;
     }
 }
+static FunctionDefData *find_fn(const char *name)
+{
+    if(g_defs == NULL)
+        return NULL;
+
+    for(unsigned int i = 0; i < g_defs->count; i++)
+    {
+        Node *n = g_defs->list[i];
+        if(n != NULL && n->kind == NODE_FUNCTION_DEF && strcmp(n->data.function_def_data.name, name) == 0)
+        {
+            return &n->data.function_def_data;
+        }
+    }
+    return NULL;
+}
+
 void tac_gen_statement(Node *node, TacList *list); 
 Operand tac_gen_exp(Node *node, TacList *list);
+static Operand coerce(Operand op, const Type *from, DataType to, TacList *list);
+int new_temp(void);
+int new_label(void);
 
-static Operand gen_body_value(Node *body, TacList *list)
+static Operand gen_body_value(Node *body,TacList *list,  DataType want)
 {
     if(body == NULL)
     {
@@ -204,27 +231,29 @@ static Operand gen_body_value(Node *body, TacList *list)
     if(body->kind != NODE_BLOCK)
     {
         if(is_value_node(body))
-            return tac_gen_exp(body,list);
+           return coerce(tac_gen_exp(body, list), &body->type, want, list);
         tac_gen_statement(body,list);
         return op_none();
     }
-
     NodeList *st = &body->data.block_data.statements;
     if(st->count == 0)
     {
         return op_none();
     }
+    scope_push();
     for(unsigned int i = 0; i + 1 < st->count; i++)
     {
         tac_gen_statement(st->list[i],list);
     }
+
     Node *last = st->list[st->count - 1];
-    if(is_value_node(last))
-    {
-        return tac_gen_exp(last,list);
-    }
-    tac_gen_statement(last, list);
-    return op_none();
+    Operand r = op_none();
+    if (is_value_node(last))
+        r = coerce(tac_gen_exp(last, list), &last->type, want, list);
+    else
+        tac_gen_statement(last, list);
+    scope_pop();
+    return r;
 }
 
 int new_temp(void) {
@@ -249,6 +278,17 @@ static Operand coerce(Operand op, const Type *from, DataType to, TacList *list)
     return op;
 }
 
+static DataType scope_type(const char *name)
+{
+    for(int i = scope_cnt - 1; i >=0; i-- )
+    {
+        if(strcmp(scope_vars[i].name, name) == 0)
+        {
+            return scope_vars[i].type;
+        }
+    }
+    return TYPE_UNKNOWN;
+}
 
 TacOp token_to_tac_op(TokenType op) {
     switch (op) {
@@ -433,7 +473,11 @@ Operand tac_gen_exp(Node *node, TacList *list)
         if (strcmp(node->data.call_data.name, "print") == 0)
         {
             Node *arg = node->data.call_data.arguments.list[0];
-            Operand val = (arg->type.kind == TYPE_UNIT) ? op_string("()") : tac_gen_exp(arg, list);
+            Operand val = tac_gen_exp(arg, list);
+            if(arg->type.kind == TYPE_UNIT)
+            {
+                val = op_string("()");
+            }
             add_instr(list, TAC_WRITE, op_none(), val, op_none());
             return op_nil();
         }
@@ -449,10 +493,15 @@ Operand tac_gen_exp(Node *node, TacList *list)
                 error_exit(ERR_INTERNAL,0,"Memmory allocation error");
             }
         }
-
+        FunctionDefData *fd = find_fn(node->data.call_data.name);
         for(unsigned int i = 0; i < argc; i++)
         {
-            args[i] = tac_gen_exp(node->data.call_data.arguments.list[i], list);
+            Node *node_arg = node->data.call_data.arguments.list[i]; 
+            args[i] = tac_gen_exp(node_arg,list);
+            if(fd != NULL && i < fd->params.count)
+            {
+                args[i] = coerce(args[i],&node_arg->type, fd->params.list[i]->data.param_data.type.kind, list);
+            }
         }
 
         for(unsigned int i = 0; i < argc; i++)
@@ -500,6 +549,28 @@ Operand tac_gen_exp(Node *node, TacList *list)
     }
     case NODE_UNIT:
         return op_nil();
+    case NODE_IF_STATEMENT: 
+    case NODE_IF_VALUE:
+    {
+        DataType want = node->type.kind;
+        Operand res = op_temp(new_temp());
+        int l_else = new_label();
+        int l_end  = new_label();
+
+        Operand cond = tac_gen_exp(node->data.if_data.condition, list);
+        add_instr(list, TAC_JUMP_IF_FALSE, op_none(), cond, op_label(l_else));
+
+        Operand then = gen_body_value(node->data.if_data.then_part, list, want);
+        add_instr(list, TAC_MOVE, res, then.kind != OP_NONE ? then : op_nil(), op_none());
+        add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
+
+        add_instr(list, TAC_LABEL, op_label(l_else), op_none(), op_none());
+        Operand els = gen_body_value(node->data.if_data.else_part, list, want);
+        add_instr(list, TAC_MOVE, res, els.kind != OP_NONE ? els : op_nil(), op_none());
+
+        add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+        return res;
+    }
     default:
         break;
     }
@@ -516,6 +587,7 @@ void tac_gen_statement(Node *node, TacList *list)
     case NODE_PROGRAM:
     {
         NodeList *defs = &node->data.program_data.definitions;
+        g_defs = defs;
         const char *main_name = NULL;
 
         for(unsigned int i = 0; i < node->data.program_data.definitions.count; i++)
@@ -546,6 +618,7 @@ void tac_gen_statement(Node *node, TacList *list)
         FunctionDefData *fn = &node->data.function_def_data;
         int end_label = new_label();
         current_func_end_label = end_label;
+        current_ret_type = &fn->return_type;
 
         add_instr(list, TAC_LABEL, op_var(fn->name), op_none(), op_none());
 
@@ -558,12 +631,12 @@ void tac_gen_statement(Node *node, TacList *list)
             Node *param_node = fn->params.list[i];
             char slot_buf[32];
             snprintf(slot_buf, sizeof(slot_buf), "%%%u", i + 1);
-            const char *uni = scope_declare(param_node->data.param_data.name);
+            const char *uni = scope_declare(param_node->data.param_data.name,param_node->data.param_data.type.kind);
             add_instr(list, TAC_MOVE, op_var(uni),
                       op_var(copy_str(slot_buf)), op_none());
         }
 
-        Operand last = gen_body_value(fn->body, list);
+        Operand last = gen_body_value(fn->body, list, fn->return_type.kind);
         if (last.kind != OP_NONE && fn->return_type.kind != TYPE_UNIT)
             add_instr(list, TAC_MOVE, op_var("%retval"), last, op_none());
 
@@ -571,15 +644,17 @@ void tac_gen_statement(Node *node, TacList *list)
         add_instr(list, TAC_RETURN, op_none(), op_none(), op_none());
 
         current_func_end_label = -1;
+        current_ret_type = NULL;
         break;
 
     }
     case NODE_ASSIGN:
     {
-        Operand var_op = op_var(scope_lookup(node->data.assign_data.name));
-        Operand op_val = tac_gen_exp(node->data.assign_data.value, list);
-
-        add_instr(list,TAC_MOVE,var_op,op_val,op_none());
+        Node *value = node->data.assign_data.value;
+        const char *name = node->data.assign_data.name;
+        Operand val = tac_gen_exp(value, list);
+        val = coerce(val, &value->type, scope_type(name), list);
+        add_instr(list, TAC_MOVE, op_var(scope_lookup(name)), val, op_none());
         break;
     }
     case NODE_VARIABLE_DECLARATION:
@@ -591,7 +666,7 @@ void tac_gen_statement(Node *node, TacList *list)
             Operand val_op = tac_gen_exp(value, list);
             val_op = coerce(val_op, &value->type,
                         node->data.var_decl_data.type.kind, list);
-            Operand var_op = op_var(scope_declare(node->data.var_decl_data.name));
+            Operand var_op = op_var(scope_declare(node->data.var_decl_data.name,node->data.var_decl_data.type.kind));
             add_instr(list, TAC_MOVE, var_op, val_op, op_none());
         }
         break;
@@ -643,16 +718,104 @@ void tac_gen_statement(Node *node, TacList *list)
         add_instr(list, TAC_LABEL, op_label(label_end), op_none(), op_none());
         break;
     }
+    case NODE_FOR_CYCLE:
+    {
+       ForData *fd = &node->data.for_data;
+       Node *range = fd->range;
+       Node *step_node = NULL;
+
+       if(range->kind == NODE_BINARY_OPERATOR && range->data.bin_op_data.op == TOKEN_BY)
+       {
+            step_node = range->data.bin_op_data.right;
+            range = range->data.bin_op_data.left;
+       }
+       bool inclusive = (range->data.bin_op_data.op == TOKEN_TO);
+
+       Operand from = tac_gen_exp(range->data.bin_op_data.left, list);
+       Operand lim = op_temp(new_temp());
+       Operand to_val = tac_gen_exp(range->data.bin_op_data.right, list);
+
+       add_instr(list,TAC_MOVE,lim,to_val,op_none());
+       Operand step = op_int(1);
+       if(step_node != NULL)
+       {
+            step = op_temp(new_temp());
+            Operand step_val = tac_gen_exp(step_node,list);
+            add_instr(list,TAC_MOVE,step,step_val,op_none());
+       }
+       scope_push();
+       Operand iv = op_var(scope_declare(fd->name, TYPE_INT));
+       add_instr(list, TAC_MOVE, iv, from, op_none());
+
+       int l_start = new_label();
+       int l_next = new_label();
+       int l_end = new_label();
+
+       if(step_node != NULL)
+       {
+            int l_ok = new_label();
+            Operand is_zero = print_bin(list, TAC_EQ, step, op_int(0));
+            add_instr(list,TAC_JUMP_IF_FALSE,op_none(),is_zero,op_label(l_ok));
+            add_instr(list,TAC_EXIT,op_none(),op_int(40),op_none());
+            add_instr(list,TAC_LABEL,op_label(l_ok),op_none(),op_none());
+       }
+
+       add_instr(list,TAC_LABEL, op_label(l_start),op_none(),op_none());
+
+       TacOp jump = inclusive ? TAC_JUMP_IF_TRUE : TAC_JUMP_IF_FALSE;
+       TacOp up   = inclusive ? TAC_GT : TAC_LT;
+       TacOp down = inclusive ? TAC_LT : TAC_GT;
+
+       if(step_node == NULL)
+       {
+            Operand c = print_bin(list,up,iv,lim);
+            add_instr(list,jump,op_none(),c,op_label(l_end));
+       }
+       else
+       {
+            int l_neg = new_label();
+            int l_body = new_label();
+            Operand is_up = print_bin(list, TAC_GT, step, op_int(0));
+            add_instr(list, TAC_JUMP_IF_FALSE, op_none(), is_up, op_label(l_neg));
+            Operand c1 = print_bin(list, up, iv, lim);
+            add_instr(list, jump, op_none(), c1, op_label(l_end));
+            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_body));
+            add_instr(list, TAC_LABEL, op_label(l_neg), op_none(), op_none());
+            Operand c2 = print_bin(list, down, iv, lim);
+            add_instr(list, jump, op_none(), c2, op_label(l_end));
+            add_instr(list, TAC_LABEL, op_label(l_body), op_none(), op_none());
+       }
+       for(unsigned int k = 0; k < fd->guards.count; k++)
+       {
+            Operand g = tac_gen_exp(fd->guards.list[k], list);
+            add_instr(list, TAC_JUMP_IF_FALSE, op_none(), g, op_label(l_next));  
+       }
+
+       tac_gen_statement(fd->body,list);
+       add_instr(list, TAC_LABEL, op_label(l_next), op_none(), op_none());
+       add_instr(list, TAC_ADD, iv, iv, step);
+       add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_start));
+       add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+       scope_pop();
+       break;
+
+    }
     case NODE_RETURN:
     {
-        if (node->data.return_data.value != NULL)
+        Node *value = node->data.return_data.value;
+        if(value != NULL)
         {
-            Operand ret_val = tac_gen_exp(node->data.return_data.value, list);
-            add_instr(list, TAC_MOVE, op_var("%retval"), ret_val, op_none());
+            Operand val = tac_gen_exp(value,list);
+            if(current_ret_type != NULL && current_ret_type->kind != TYPE_UNIT)
+            {
+                val = coerce(val,&value->type,current_ret_type->kind,list);
+                add_instr(list,TAC_MOVE,op_var("%retval"),val,op_none());
+            }
+            
         }
-        if (current_func_end_label != -1)
+        if(current_func_end_label != -1)
         {
-            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(current_func_end_label));
+            add_instr(list, TAC_JUMP,op_none(),op_none(),op_label(current_func_end_label));
         }
         break;
     }
@@ -942,7 +1105,9 @@ void tac_gen_reset(void) {
     temp_counter = 1;
     label_counter = 1;
     current_func_end_label = -1;
-    unique_counter = 1;     
+    unique_counter = 1;
+    g_defs = NULL; 
+    current_ret_type = NULL;     
     scope_reset();
 }
 
