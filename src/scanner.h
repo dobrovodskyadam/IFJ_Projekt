@@ -99,6 +99,7 @@ typedef struct {
     int new_line;
     int paren_depth;
     int last_char;
+    unsigned line;
 } ScannerData;
 
 
@@ -108,6 +109,7 @@ extern "C" {
 
 int initScannerData(ScannerData *scanner);
 void getToken(Token *token, ScannerData *scanner);
+const char *tokenTypeName(TokenType type);
 
 #ifdef __cplusplus
 }

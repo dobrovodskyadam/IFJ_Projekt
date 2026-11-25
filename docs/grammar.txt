@@ -1,0 +1,140 @@
+# @file grammar.txt
+# @brief IFJ26 grammar
+# @date 29-10-2026
+#
+# @author Lukas Sofka (xsofkal00)
+# @author Email: xsofkal00@stud.fit.vutbr.cz
+# Faculty of Information Technology, Brno University of Technology
+
+
+# Program structure
+<start> -> TOKEN_IMPORT TOKEN_IFJ TOKEN_EOL <list-def> TOKEN_EOF
+<list-def> -> <def> <list-def>
+<list-def> -> ε
+
+# Function definition
+<def> -> <opt-main> TOKEN_DEF TOKEN_ID TOKEN_LPAREN <list-params> TOKEN_RPAREN <opt-type> TOKEN_ASSIGN <function-body>
+<opt-main> -> TOKEN_MAIN <opt-main-space>
+<opt-main> -> ε
+<opt-main-space> -> TOKEN_EOL
+<opt-main-space> -> ε
+
+# Parameters
+<list-params> -> <parameter> <more-list-params>
+<list-params> -> ε
+<more-list-params> -> TOKEN_COMMA <parameter> <more-list-params>
+<more-list-params> -> ε
+<parameter> -> TOKEN_ID TOKEN_COLON <type>
+
+# Function body
+<function-body> -> <if-or-expr>
+<function-body> -> TOKEN_EOL <block>
+
+# Types
+<type> -> TOKEN_UNIT
+<type> -> TOKEN_KW_INT
+<type> -> TOKEN_BOOLEAN
+<type> -> TOKEN_KW_DOUBLE
+<type> -> TOKEN_KW_STRING
+<type> ->  TOKEN_LIST TOKEN_LBRACKET <type> TOKEN_RBRACKET
+<opt-type> -> TOKEN_COLON <type>
+<opt-type> -> ε
+
+# Blocks
+<block> -> TOKEN_INDENT <statement-list> TOKEN_DEDENT
+<statement-list> -> <statement> <statement-list-rest>
+<statement-list-rest> -> <statement> <statement-list-rest>
+<statement-list-rest> -> ε
+
+# Statements
+<statement> -> <variable-declaration>
+<statement> -> <assignment>
+<statement> -> <return>
+<statement> -> <while-statement>
+<statement> -> <for-statement>
+<statement> -> <if-statement>
+<statement> -> <expression> <statement-end>
+<statement-end> -> TOKEN_EOL
+<statement-end> -> TOKEN_SEPARATOR
+<if-or-expr> -> <expression> <statement-end>
+<if-or-expr> -> <if-statement>
+<value-or-expr> -> <expression> <statement-end>
+<value-or-expr> -> <if-value>
+
+# Var/Val Declaration
+<variable-declaration> -> <var-or-val> TOKEN_ID <opt-type> TOKEN_ASSIGN <value-or-expr>
+<var-or-val> -> TOKEN_VAL
+<var-or-val> -> TOKEN_VAR
+
+# Assignment
+<assignment> -> TOKEN_ID TOKEN_ASSIGN <value-or-expr>
+
+# Return
+<return> -> TOKEN_RETURN <return-argument>
+<return-argument> -> <statement-end>
+<return-argument> -> <value-or-expr>
+
+# While cycle
+<while-statement> -> TOKEN_WHILE <expression> TOKEN_DO TOKEN_EOL <block>
+
+# For cycle
+<for-statement> -> TOKEN_FOR <for-header> TOKEN_DO TOKEN_EOL <block>
+<for-header> -> <generator>
+<for-header> -> TOKEN_EOL TOKEN_INDENT <generator> TOKEN_EOL <list-guards> TOKEN_DEDENT
+
+<list-guards> -> ε
+<list-guards> -> <guard> TOKEN_EOL <list-guards>
+<guard> -> TOKEN_IF <expression>
+<generator> -> TOKEN_ID TOKEN_GEN_ARROW <expression>
+
+# If Statement
+# Used as normal if statement (with optional else if and else)
+<if-statement> -> TOKEN_IF <expression> TOKEN_THEN <st-then-part>
+
+<st-then-part> -> TOKEN_EOL <block> <st-opt-else>
+<st-then-part> -> <expression> <st-after-inline-part>
+<st-then-part> -> TOKEN_RETURN <expression> <st-after-inline-part>
+
+<st-else-part> -> TOKEN_EOL <block>
+<st-else-part> -> <expression> <statement-end>
+<st-else-part> -> <if-statement>
+<st-else-part> -> <return>
+
+<st-opt-else> -> TOKEN_ELSE <st-else-part>
+<st-opt-else> -> ε
+
+<st-after-inline-part> -> TOKEN_ELSE <st-else-part>
+<st-after-inline-part> -> TOKEN_EOL <st-opt-else>
+<st-after-inline-part> -> TOKEN_SEPARATOR
+
+# If Value
+# Used in var x = if y > 0 then 1 else 2
+<if-value> -> TOKEN_IF <expression> TOKEN_THEN <value-then-part>
+
+<value-then-part> -> TOKEN_EOL <block> TOKEN_ELSE <value-else-part>
+<value-then-part> -> <expression> <value-after-inline-part>
+
+<value-after-inline-part> -> TOKEN_ELSE <value-else-part>
+<value-after-inline-part> -> TOKEN_EOL TOKEN_ELSE <value-else-part>
+
+<value-else-part> -> <expression> <statement-end>
+<value-else-part> -> TOKEN_EOL <block>
+<value-else-part> -> <if-value>
+
+# List
+<list-literal> -> TOKEN_LIST TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
+
+# Expressions
+# Expressions will be parsed else where
+
+# Function Call
+<function-call> -> TOKEN_ID TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
+
+# Function Arguments
+<list-arguments> -> <argument> <more-list-arguments>
+<list-arguments> -> ε
+<more-list-arguments> -> TOKEN_COMMA <argument> <more-list-arguments>
+<more-list-arguments> -> ε
+
+# TODO: Here we have only expression but the argument can be if-value aswell
+<argument> -> <expression>

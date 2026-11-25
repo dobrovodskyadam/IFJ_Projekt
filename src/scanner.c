@@ -65,6 +65,7 @@ int initScannerData(ScannerData *scanner) {
     scanner->new_line = 1;
     scanner->paren_depth = 0;
     scanner->last_char = '\n';
+    scanner->line = 1;
     return 1;
 }
 
@@ -125,6 +126,12 @@ int readChar(ScannerData *scanner) {
     return c;
 }
 
+void unreadChar(int c, FILE *source, ScannerData *scanner) {
+    if (c == '\n') {
+        scanner->line--;
+    }
+    ungetc(c, source);
+}
 /// @brief Free allocated memory of the token string buffer
 /// @param token_buffer Pointer to the token string buffer to free
 void freeTokenString(TokenString *token_buffer) {
@@ -144,12 +151,14 @@ void getToken(Token *token, ScannerData *scanner) {
         token->type = TOKEN_DEDENT;
         return;
     }
+
     STATE state = STATE_START;
     TokenString token_buffer;
     if (!initTokenString(&token_buffer)) {
         token->type = TOKEN_ERROR_MEMORY;
         return;
     }
+
     int token_found = 0;
     int comment_nesting = 0;
     int comment_new_line = 0;
@@ -159,9 +168,13 @@ void getToken(Token *token, ScannerData *scanner) {
     while (!token_found) {
         int c;
         c = readChar(scanner);
+
+        if (c == '\n') {
+            scanner->line++;
+        }
+
         switch (state) {
         case STATE_START:
-            // cases if is new line
             if (scanner->new_line == 1) {
                 if (c == ' ') {
                     space_count++;
@@ -172,7 +185,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     state = STATE_INDENT;
                     has_tab = 1;
                 } else {
-                    ungetc(c, stdin);
+                     unreadChar(c, stdin, scanner);
                     state = STATE_INDENT;
                 }
             } else if (isalpha(c)) {
@@ -221,6 +234,19 @@ void getToken(Token *token, ScannerData *scanner) {
                 state = STATE_AND;
             } else if (c == '|') {
                 state = STATE_OR;
+            } else if (c == ',') {
+              token->type = TOKEN_COMMA;
+              token_found = 1;
+              break;
+            }
+            else if (c == '[') {
+              token->type = TOKEN_LBRACKET;
+              token_found = 1;
+              break;
+            } else if (c == ']') {
+              token->type = TOKEN_RBRACKET;
+              token_found = 1;
+               break;
             } else if (c == '(') {
                 token->type = TOKEN_LPAREN;
                 scanner->paren_depth++;
@@ -306,7 +332,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     if (token->type == TOKEN_DOUBLE) {
                         token->value.double_val = atof(token_buffer.str);
                     }
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     token_found = 1;
                 }
             }
@@ -325,7 +351,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     }
                 }
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token->type = TOKEN_DOT;
                 token_found = 1;
             }
@@ -406,7 +432,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     state = STATE_ERROR_MEMORY;
                 } else {
                     token->value.double_val = atof(token_buffer.str);
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     token_found = 1;
                 }
             }
@@ -430,7 +456,7 @@ void getToken(Token *token, ScannerData *scanner) {
             if (c == '+') {
                 token->type = TOKEN_CONCATENATION;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
             }
             token_found = 1;
             break;
@@ -455,7 +481,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 if (!addChar(&token_buffer, '\0')) {
                     state = STATE_ERROR_MEMORY;
                 } else {
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     // cheking if its @main
                     if (token_buffer.str[0] == '@') {
                         if (strcmp(token_buffer.str, "@main") == 0) {
@@ -507,6 +533,10 @@ void getToken(Token *token, ScannerData *scanner) {
                             token->type = TOKEN_TO;
                         } else if (strcmp(token_buffer.str, "by") == 0) {
                             token->type = TOKEN_BY;
+                        } else if (strcmp(token_buffer.str, "true") == 0) {
+                           token->type = TOKEN_TRUE;
+                        } else if (strcmp(token_buffer.str, "false") == 0) {
+                          token->type = TOKEN_FALSE;
                         } else {
                             token->type = TOKEN_ID;
                             token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
@@ -560,7 +590,7 @@ void getToken(Token *token, ScannerData *scanner) {
                         token->type = TOKEN_ERROR;
                         token_found = 1;
                     } else {
-                        ungetc(c, stdin);
+                        unreadChar(c, stdin, scanner);
                         token->type = TOKEN_ID;
                         token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
                         if (token->value.str_val == NULL) {
@@ -591,7 +621,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 token->type = TOKEN_GEN_ARROW;
                 token_found = 1;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token_found = 1;
             }
             break;
@@ -708,7 +738,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     }
                     token_found = 1;
                 }
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
             }
             break;
 
@@ -784,7 +814,7 @@ void getToken(Token *token, ScannerData *scanner) {
                 comment_nesting++;
                 state = STATE_COMMENT_NESTING;
             } else {
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 token->type = TOKEN_DIV;
                 token_found = 1;
             }
@@ -936,7 +966,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     token_found = 1;
                     break;
                 }
-                ungetc(c, stdin);
+                unreadChar(c, stdin, scanner);
                 int last_space_count = scanner->indent_stack[scanner->stack_top];
                 // indent is bigger than last indent
                 if (space_count > last_space_count) {
@@ -997,7 +1027,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
-                    ungetc(next_c, stdin);
+                    unreadChar(c, stdin, scanner);
                     if (has_tab || space_count <= scanner->indent_stack[scanner->stack_top]) {
                         token->type = TOKEN_ERROR;
                     } else {
@@ -1011,12 +1041,12 @@ void getToken(Token *token, ScannerData *scanner) {
                     token_found = 1;
                 } else if (c != ')' && space_count <= scanner->indent_stack[scanner->stack_top]) {
                     scanner->paren_depth = 0;
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     scanner->new_line = 1;
                     token->type = TOKEN_EOL;
                     token_found = 1;
                 } else {
-                    ungetc(c, stdin);
+                    unreadChar(c, stdin, scanner);
                     state = STATE_START;
                 }
             }
@@ -1031,5 +1061,79 @@ void getToken(Token *token, ScannerData *scanner) {
             token_found = 1;
         }
     }
+
+    token->line = (token->type == TOKEN_EOL) ? scanner->line - 1 : scanner->line;
     freeTokenString(&token_buffer);
+}
+
+
+// Helper Static Array
+static const char *token_names[TOKEN_COUNT] = {
+    [TOKEN_ID] = "TOKEN_ID",
+    [TOKEN_INT] = "TOKEN_INT",
+    [TOKEN_DOUBLE] = "TOKEN_DOUBLE",
+    [TOKEN_STRING] = "TOKEN_STRING",
+    [TOKEN_PLUS] = "TOKEN_PLUS",
+    [TOKEN_MINUS] = "TOKEN_MINUS",
+    [TOKEN_IF] = "TOKEN_IF",
+    [TOKEN_ELSE] = "TOKEN_ELSE",
+    [TOKEN_WHILE] = "TOKEN_WHILE",
+    [TOKEN_FOR] = "TOKEN_FOR",
+    [TOKEN_AND] = "TOKEN_AND",
+    [TOKEN_OR] = "TOKEN_OR",
+    [TOKEN_EQ] = "TOKEN_EQ",
+    [TOKEN_GR_EQ] = "TOKEN_GR_EQ",
+    [TOKEN_LS_EQ] = "TOKEN_LS_EQ",
+    [TOKEN_LS] = "TOKEN_LS",
+    [TOKEN_GR] = "TOKEN_GR",
+    [TOKEN_DEF] = "TOKEN_DEF",
+    [TOKEN_MUL] = "TOKEN_MUL",
+    [TOKEN_DIV] = "TOKEN_DIV",
+    [TOKEN_NEQ] = "TOKEN_NEQ",
+    [TOKEN_LPAREN] = "TOKEN_LPAREN",
+    [TOKEN_RPAREN] = "TOKEN_RPAREN",
+    [TOKEN_ASSIGN] = "TOKEN_ASSIGN",
+    [TOKEN_NOT] = "TOKEN_NOT",
+    [TOKEN_ERROR] = "TOKEN_ERROR",
+    [TOKEN_ERROR_MEMORY] = "TOKEN_ERROR_MEMORY",
+    [TOKEN_VAR] = "TOKEN_VAR",
+    [TOKEN_VAL] = "TOKEN_VAL",
+    [TOKEN_RETURN] = "TOKEN_RETURN",
+    [TOKEN_UNIT] = "TOKEN_UNIT",
+    [TOKEN_BOOLEAN] = "TOKEN_BOOLEAN",
+    [TOKEN_CASE] = "TOKEN_CASE",
+    [TOKEN_LIST] = "TOKEN_LIST",
+    [TOKEN_DO] = "TOKEN_DO",
+    [TOKEN_THEN] = "TOKEN_THEN",
+    [TOKEN_IMPORT] = "TOKEN_IMPORT",
+    [TOKEN_KW_STRING] = "TOKEN_KW_STRING",
+    [TOKEN_KW_INT] = "TOKEN_KW_INT",
+    [TOKEN_KW_DOUBLE] = "TOKEN_KW_DOUBLE",
+    [TOKEN_EOF] = "TOKEN_EOF",
+    [TOKEN_INDENT] = "TOKEN_INDENT",
+    [TOKEN_DEDENT] = "TOKEN_DEDENT",
+    [TOKEN_EOL] = "TOKEN_EOL",
+    [TOKEN_SEPARATOR] = "TOKEN_SEPARATOR",
+    [TOKEN_COLON] = "TOKEN_COLON",
+    [TOKEN_IFJ] = "TOKEN_IFJ",
+    [TOKEN_MAIN] = "TOKEN_MAIN",
+    [TOKEN_COMMA] = "TOKEN_COMMA",
+    [TOKEN_TRUE] = "TOKEN_TRUE",
+    [TOKEN_FALSE] = "TOKEN_FALSE",
+    [TOKEN_LBRACKET] = "TOKEN_LBRACKET",
+    [TOKEN_RBRACKET] = "TOKEN_RBRACKET",
+    [TOKEN_DOT] = "TOKEN_DOT",
+    [TOKEN_GEN_ARROW] = "TOKEN_GEN_ARROW",
+    [TOKEN_CONCATENATION] = "TOKEN_CONCATENATION",
+    [TOKEN_UNTIL] = "TOKEN_UNTIL",
+    [TOKEN_TO] = "TOKEN_TO",
+    [TOKEN_BY] = "TOKEN_BY",
+};
+
+// Function for getting the TokenName from the TokenType
+const char *tokenTypeName(TokenType type) {
+    if (type < 0 || type >= TOKEN_COUNT) {
+        return "UNKNOWN";
+    }
+    return token_names[type];
 }

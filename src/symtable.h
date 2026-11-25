@@ -12,34 +12,33 @@
 
 #include "hashtable.h"
 
-
 typedef struct symtab_item symtab_item_t;
-
 typedef struct symtab symtab_t;
+typedef struct Node Node;
 
-/// @brief Structure to recieve values for get_item
-/// @param scope Absolute scope value, -1 == Search failed, 
-///              0 == Global scope, 1 == First scope above global, ...
-/// @param type viz enum{...} item_type in hashtable.h
-/// @param modif True == modifiable, False == constant
-typedef struct item{
+/// @brief Structure to receive values for get_item
+/// @param scope  Absolute scope value, -1 == Search failed,
+///               0 == Global scope, 1 == First scope above global, ...
+/// @param id_cnt Unique number of the symbol (for unique names in code generation)
+/// @param decl   Declaration node of the symbol
+typedef struct item {
     int scope;
-    item_type type; 
-    bool modif;
-}item_t;
-
-symtab_t *symtab_init (void);
+    unsigned id_cnt;
+    Node *decl;
+} item_t;
 
 
-void scope_add (symtab_t *stab);
-void scope_rm (symtab_t *stab);
+symtab_t *symtab_init(void);
 
-bool item_add (symtab_t *stab, char *id, item_type type, bool modif);
-bool item_lookup (symtab_t *stab, char *id);
-void item_del (symtab_t *stab, char *id);
+void scope_add(symtab_t *stab);
+void scope_rm(symtab_t *stab);
+
+bool item_add(symtab_t *stab, char *id, Node *decl);
+bool item_lookup(symtab_t *stab, char *id);
+void item_del(symtab_t *stab, char *id);
 
 item_t get_item(symtab_t *stab, char *id);
 
-void symtab_dtor (symtab_t *stab);
+void symtab_dtor(symtab_t *stab);
 
 #endif
