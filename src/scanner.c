@@ -919,12 +919,8 @@ void getToken(Token *token, ScannerData *scanner) {
             } else if (c == '/') {
                 int next_c = fgetc(stdin);
                 if (next_c == '/') {
-                    has_tab = 0;
-                    space_count = 0;
                     state = STATE_COMMENT;
                 } else if (next_c == '*') {
-                    has_tab = 0;
-                    space_count = 0;
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
