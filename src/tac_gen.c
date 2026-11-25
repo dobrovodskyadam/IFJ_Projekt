@@ -422,6 +422,65 @@ static Operand gen_list_concat(TacList *list, Operand a, Operand b)
     list_copy(list, dst, off, b, op_int(1), lb);
     return dst;
 }
+static Operand gen_to_str(TacList *list, Operand op, const Type *t)
+{
+    switch (t->kind)
+    {
+        case TYPE_INT: return print_un(list, TAC_INT2STR, op);
+        case TYPE_DOUBLE: return print_un(list, TAC_FLOAT2STR, op);
+        case TYPE_STRING: return op;
+        case TYPE_UNIT: return op_string("()");
+        case TYPE_BOOL:
+        {
+            Operand tmp = op_temp(new_temp());
+            int l_false = new_label();
+            int l_end = new_label();
+
+            add_instr(list, TAC_JUMP_IF_FALSE,op_none(),op,op_label(l_false));
+            add_instr(list, TAC_MOVE, tmp, op_string("true"), op_none());
+            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
+            add_instr(list, TAC_LABEL, op_label(l_false), op_none(), op_none());
+            add_instr(list, TAC_MOVE, tmp, op_string("false"), op_none());
+            add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
+            return tmp;
+        }
+        case TYPE_LIST: 
+        {
+            const Type *et = &g_unknown_type;
+            if (t->elem != NULL)
+            {
+                et = t->elem;
+            }
+            Operand res = op_temp(new_temp());
+            Operand i = op_temp(new_temp());
+            Operand len = arr_len(list, op);
+            int l_loop = new_label();
+            int l_nosep = new_label();
+            int l_done = new_label();
+
+            add_instr(list, TAC_MOVE, res, op_string("List("), op_none());
+            add_instr(list, TAC_MOVE, i, op_int(0), op_none());
+            add_instr(list, TAC_LABEL, op_label(l_loop), op_none(), op_none());
+            Operand c = print_bin(list, TAC_LT, i, len);
+            add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c, op_label(l_done));
+            Operand first = print_bin(list, TAC_EQ, i, op_int(0));
+            add_instr(list, TAC_JUMP_IF_TRUE, op_none(), first, op_label(l_nosep));
+            add_instr(list, TAC_CONCAT, res, res, op_string(", "));
+            add_instr(list, TAC_LABEL, op_label(l_nosep), op_none(), op_none());
+            Operand slot = print_bin(list,TAC_ADD,i,op_int(1));
+            Operand elem = arr_get(list, op, slot);
+            Operand s = gen_to_str(list, elem, et);
+            add_instr(list, TAC_CONCAT, res, res, s);
+            add_instr(list, TAC_ADD, i, i, op_int(1));
+            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_loop));
+            add_instr(list, TAC_LABEL, op_label(l_done), op_none(), op_none());
+            add_instr(list, TAC_CONCAT, res, res, op_string(")"));
+            return res;
+        }
+        default:
+            return op;
+    }
+}
 static bool gen_builtin(Node *node, TacList *list, Operand *res);
 
 Operand tac_gen_exp(Node *node, TacList *list)
