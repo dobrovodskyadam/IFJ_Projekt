@@ -262,7 +262,10 @@ void getToken(Token *token, ScannerData *scanner) {
             break;
 
         case STATE_NUM:
-            if (isdigit(c)) {
+            if ((isdigit(c) || c == '_') && token_buffer.str[0] == '0' && token_buffer.length == 1 && token->type == TOKEN_INT) {
+                token->type = TOKEN_ERROR;
+                token_found = 1;
+            }else if (isdigit(c)) {
                 state = STATE_NUM;
                 if (!addChar(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
@@ -343,6 +346,8 @@ void getToken(Token *token, ScannerData *scanner) {
                 if (!addChar(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
                 }
+            } else if (c == '_') {
+                state = STATE_NUM_UNDERSCORE;
             } else {
                 token->type = TOKEN_ERROR;
                 token_found = 1;
@@ -410,6 +415,8 @@ void getToken(Token *token, ScannerData *scanner) {
                 if (!addChar(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
                 }
+            } else if (c == '_') {
+                state = STATE_EXP_UNDERSCORE;
             } else {
                 token->type = TOKEN_ERROR;
                 token_found = 1;
