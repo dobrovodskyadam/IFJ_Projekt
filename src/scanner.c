@@ -553,6 +553,9 @@ void getToken(Token *token, ScannerData *scanner) {
                 } else {
                     if (!addChar(&token_buffer, '\0')) {
                         state = STATE_ERROR_MEMORY;
+                    } else if (strcmp(token_buffer.str, "_") == 0) {
+                        token->type = TOKEN_ERROR;
+                        token_found = 1;
                     } else {
                         ungetc(c, stdin);
                         token->type = TOKEN_ID;
