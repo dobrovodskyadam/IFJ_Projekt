@@ -481,6 +481,7 @@ static Operand gen_to_str(TacList *list, Operand op, const Type *t)
             return op;
     }
 }
+
 static bool gen_builtin(Node *node, TacList *list, Operand *res);
 
 Operand tac_gen_exp(Node *node, TacList *list)
@@ -643,6 +644,10 @@ Operand tac_gen_exp(Node *node, TacList *list)
             {
                 val = op_string("()");
             }
+            if (arg->type.kind == TYPE_UNIT)
+                val = op_string("()");
+            else if (arg->type.kind == TYPE_LIST)
+                val = gen_to_str(list, val, &arg->type);
             add_instr(list, TAC_WRITE, op_none(), val, op_none());
             return op_nil();
         }
@@ -1050,40 +1055,7 @@ static bool gen_builtin(Node *node, TacList *list, Operand *res)
     if(strcmp(name, "toStr") == 0)
     {
         Node *arg = args->list[0];
-        Operand a = tac_gen_exp(arg, list);
-        switch (arg->type.kind)
-        {
-        case TYPE_INT:
-            *res = print_un(list,TAC_INT2STR,a);
-            break;
-        case TYPE_DOUBLE:
-            *res = print_un(list, TAC_FLOAT2STR, a);
-            break;
-        case TYPE_STRING:
-            *res = a;
-            break;
-        case TYPE_UNIT:
-            *res = op_string("()"); 
-            break;
-        case TYPE_BOOL:
-        {
-            Operand tmp = op_temp(new_temp());
-            int l_false = new_label();
-            int l_end = new_label();
-
-            add_instr(list, TAC_JUMP_IF_FALSE, op_none(), a, op_label(l_false));
-            add_instr(list, TAC_MOVE, tmp, op_string("true"), op_none());
-            add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_end));
-            add_instr(list, TAC_LABEL, op_label(l_false), op_none(), op_none());
-            add_instr(list, TAC_MOVE, tmp, op_string("false"), op_none());
-            add_instr(list, TAC_LABEL, op_label(l_end), op_none(), op_none());
-            *res = tmp;
-            break;
-        }        
-        default:
-            *res = a; break; 
-            break;
-        }
+        *res = gen_to_str(list, tac_gen_exp(arg, list), &arg->type);
         return true;
     }
     if(strcmp(name,"ord") == 0)
