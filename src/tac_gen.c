@@ -15,6 +15,7 @@ static int mark_cnt = 0;
 static int mark_cap = 0;
 static int unique_counter = 1;
 static const Type *current_ret_type = NULL;
+static const Type g_unknown_type = {TYPE_UNKNOWN, NULL};
 static NodeList *g_defs = NULL;
 
 static void scope_push(void)
@@ -315,6 +316,111 @@ static Operand print_bin(TacList *list, TacOp op, Operand a, Operand b)
     Operand tmp = op_temp(new_temp());
     add_instr(list,op,tmp,a,b);
     return tmp;
+}
+static Operand arr_get(TacList *list, Operand arr, Operand idx )
+{
+    Operand tmp = op_temp(new_temp());
+    add_instr(list,TAC_ARRAYGET,tmp,arr,idx);
+    return tmp;
+}
+static Operand arr_len(TacList *list,Operand arr)
+{
+    return arr_get(list,arr,op_int(0));
+}
+static void arr_set(TacList *list, Operand arr, Operand idx, Operand val)
+{
+    add_instr(list, TAC_ARRAYSET, arr, idx, val);
+}
+static Operand list_alloc(TacList *list, Operand op)
+{
+    Operand size = print_bin(list,TAC_ADD,op,op_int(1));
+    Operand arr = op_temp(new_temp());
+    add_instr(list,TAC_NEWARRAY,arr,size,op_none());
+    arr_set(list,arr,op_int(0),op);
+    return arr;
+}
+static void list_copy(TacList *list,Operand dst,Operand dpos,Operand src,Operand spos,Operand count)
+{
+    Operand tmp = op_temp(new_temp());
+    int l_loop = new_label();
+    int l_done = new_label();
+
+    add_instr(list, TAC_MOVE, tmp, op_int(0), op_none());
+    add_instr(list, TAC_LABEL, op_label(l_loop), op_none(), op_none());
+    Operand c = print_bin(list, TAC_LT, tmp, count);
+    add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c, op_label(l_done));
+    Operand si = print_bin(list, TAC_ADD, spos, tmp);
+    Operand v  = arr_get(list, src, si);
+    Operand di = print_bin(list, TAC_ADD, dpos, tmp);
+    arr_set(list, dst, di, v);
+    add_instr(list, TAC_ADD, tmp, tmp, op_int(1));
+    add_instr(list, TAC_JUMP, op_none(), op_none(), op_label(l_loop));
+    add_instr(list, TAC_LABEL, op_label(l_done), op_none(), op_none());
+}
+static Operand gen_list_index(Node *node, TacList *list)
+{
+    Operand arr = op_var(scope_lookup(node->data.call_data.name));
+    Operand idx = tac_gen_exp(node->data.call_data.arguments.list[0], list);
+    Operand len = arr_len(list, arr);
+    int l_err = new_label();
+    int l_ok  = new_label();
+
+    Operand neg = print_bin(list, TAC_LT, idx, op_int(0));
+    add_instr(list, TAC_JUMP_IF_TRUE, op_none(), neg, op_label(l_err));
+    Operand in = print_bin(list, TAC_LT, idx, len);
+    add_instr(list, TAC_JUMP_IF_TRUE, op_none(), in, op_label(l_ok));
+    add_instr(list, TAC_LABEL, op_label(l_err), op_none(), op_none());
+    add_instr(list, TAC_EXIT, op_none(), op_int(40), op_none());
+    add_instr(list, TAC_LABEL, op_label(l_ok), op_none(), op_none());
+
+    Operand slot = print_bin(list, TAC_ADD, idx, op_int(1));
+    return arr_get(list,arr,slot);
+
+}
+static Operand gen_slice(TacList *list, Operand src, Operand from, Operand until)
+{
+    Operand len = arr_len(list, src);
+    Operand lo = op_temp(new_temp());
+    Operand hi = op_temp(new_temp());
+    int l1 = new_label();
+    int l2 = new_label();
+    int l3 = new_label();
+
+    add_instr(list, TAC_MOVE, lo, from, op_none());
+    add_instr(list, TAC_MOVE, hi, until, op_none());
+
+    Operand c1 = print_bin(list, TAC_LT,lo,op_int(0));
+    add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c1, op_label(l1));
+    add_instr(list, TAC_MOVE, lo, op_int(0), op_none());
+    add_instr(list, TAC_LABEL, op_label(l1), op_none(), op_none());
+
+    Operand c2 = print_bin(list,TAC_GT, hi, len);
+    add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c2, op_label(l2));
+    add_instr(list, TAC_MOVE, hi, len, op_none());
+    add_instr(list, TAC_LABEL, op_label(l2), op_none(), op_none());
+
+    Operand c3 = print_bin(list, TAC_LT, hi, lo);                  
+    add_instr(list, TAC_JUMP_IF_FALSE, op_none(), c3, op_label(l3));
+    add_instr(list, TAC_MOVE, hi, lo, op_none());
+    add_instr(list, TAC_LABEL, op_label(l3), op_none(), op_none());
+
+    Operand n = print_bin(list, TAC_SUB, hi,lo);
+    Operand dst = list_alloc(list, n);
+    Operand sp  = print_bin(list, TAC_ADD, lo, op_int(1));
+    list_copy(list, dst, op_int(1), src, sp, n);
+    return dst;
+
+}
+static Operand gen_list_concat(TacList *list, Operand a, Operand b)
+{
+    Operand la  = arr_len(list, a);
+    Operand lb  = arr_len(list, b);
+    Operand n   = print_bin(list, TAC_ADD, la, lb);
+    Operand dst = list_alloc(list, n);
+    list_copy(list, dst, op_int(1), a, op_int(1), la);
+    Operand off = print_bin(list, TAC_ADD, la, op_int(1));
+    list_copy(list, dst, off, b, op_int(1), lb);
+    return dst;
 }
 static bool gen_builtin(Node *node, TacList *list, Operand *res);
 

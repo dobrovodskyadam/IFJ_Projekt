@@ -367,6 +367,9 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
         case TAC_INT2CHAR: print_generic(output,"INT2CHAR",instr); break;
         case TAC_GETCHAR: print_generic(output,"GETCHAR",instr); break;
         case TAC_EXIT: print_generic(output,"EXIT",instr); break;
+        case TAC_NEWARRAY: print_generic(output,"NEWARRAY",instr); break;
+        case TAC_ARRAYGET: print_generic(output,"ARRAYGET",instr); break;
+        case TAC_ARRAYSET: print_generic(output, "ARRAYSET", instr); break;
         default:
             break;
         }
