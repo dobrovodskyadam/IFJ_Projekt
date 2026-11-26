@@ -10,7 +10,7 @@
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
 
-#include "hashtable.h"
+#include <stdbool.h>
 
 typedef struct symtab_item symtab_item_t;
 typedef struct symtab symtab_t;

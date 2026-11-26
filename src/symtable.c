@@ -143,8 +143,8 @@ item_t get_item(symtab_t *stab, char *id) {
         scope = scope->next;
     }
 
-    item.id_cnt = hash_item->id_cnt;
-    item.decl = hash_item->decl;
+    item.id_cnt = hash_item_id_cnt(hash_item);
+    item.decl = hash_item_decl(hash_item);
     return item;
 }
 
