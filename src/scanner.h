@@ -107,8 +107,8 @@ typedef struct {
 extern "C" {
 #endif
 
-int initScannerData(ScannerData *scanner);
-void getToken(Token *token, ScannerData *scanner);
+int init_scanner_data(ScannerData *scanner);
+void get_token(Token *token, ScannerData *scanner);
 const char *tokenTypeName(TokenType type);
 
 #ifdef __cplusplus
