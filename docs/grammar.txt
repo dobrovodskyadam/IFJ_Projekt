@@ -22,8 +22,10 @@
 # Parameters
 <list-params> -> <parameter> <more-list-params>
 <list-params> -> ε
-<more-list-params> -> TOKEN_COMMA <parameter> <more-list-params>
+<more-list-params> -> TOKEN_COMMA <more-list-params-after>
 <more-list-params> -> ε
+<more-list-params-after> -> <parameter> <more-list-params>
+<more-list-params-after> -> ε
 <parameter> -> TOKEN_ID TOKEN_COLON <type>
 
 # Function body
@@ -75,15 +77,22 @@
 <return-argument> -> <value-or-expr>
 
 # While cycle
-<while-statement> -> TOKEN_WHILE <expression> TOKEN_DO TOKEN_EOL <block>
+<while-statement> -> TOKEN_WHILE <expression> TOKEN_DO <oneline-or-multiline>
 
 # For cycle
-<for-statement> -> TOKEN_FOR <for-header> TOKEN_DO TOKEN_EOL <block>
-<for-header> -> <generator>
-<for-header> -> TOKEN_EOL TOKEN_INDENT <generator> TOKEN_EOL <list-guards> TOKEN_DEDENT
+<for-statement> -> TOKEN_FOR <for-header> TOKEN_DO <oneline-or-multiline>
+<for-header> -> <generator> <guards-oneline>
+<for-header> -> TOKEN_EOL TOKEN_INDENT <generator> TOKEN_EOL <guards-multiline> TOKEN_DEDENT
 
-<list-guards> -> ε
-<list-guards> -> <guard> TOKEN_EOL <list-guards>
+# Switch between line number
+<oneline-or-multiline> -> TOKEN_EOL <block>
+<oneline-or-multiline> -> <statement>
+
+<guards-oneline> -> <guard> <guards-oneline>
+<guards-oneline> -> ε
+<guards-multiline> -> <guard> TOKEN_EOL <guards-multiline>
+<guards-multiline> -> ε
+
 <guard> -> TOKEN_IF <expression>
 <generator> -> TOKEN_ID TOKEN_GEN_ARROW <expression>
 
@@ -133,8 +142,10 @@
 # Function Arguments
 <list-arguments> -> <argument> <more-list-arguments>
 <list-arguments> -> ε
-<more-list-arguments> -> TOKEN_COMMA <argument> <more-list-arguments>
+<more-list-arguments> -> TOKEN_COMMA <more-list-arguments-after>
 <more-list-arguments> -> ε
+<more-list-arguments-after> -> <argument> <more-list-arguments>
+<more-list-arguments-after> -> ε
 
 # TODO: Here we have only expression but the argument can be if-value aswell
 <argument> -> <expression>

@@ -218,13 +218,27 @@ Node *parse_parameter(void) {
 }
 
 /// @brief
-void parse_more_list_params(NodeList *params) {
-    switch (current.type) {
-    case TOKEN_COMMA:
-        expect(TOKEN_COMMA);
+void parse_more_list_params_after(NodeList *params, unsigned int comma_line) {
+    if (current.type == TOKEN_RPAREN) {
+        if (current.line == comma_line)
+            syntax_error("parameter after TOKEN_COMMA");
+    } else if (current.type == TOKEN_ID) {
         NodeListAppend(params, parse_parameter());
         parse_more_list_params(params);
+    } else {
+        syntax_error("TOKEN_RPAREN or TOKEN_ID");
+    }
+}
+
+/// @brief
+void parse_more_list_params(NodeList *params) {
+    switch (current.type) {
+    case TOKEN_COMMA: {
+        unsigned int comma_line = current.line;
+        expect(TOKEN_COMMA);
+        parse_more_list_params_after(params, comma_line);
         break;
+    }
 
     case TOKEN_RPAREN:
         break;
@@ -507,6 +521,22 @@ Node *parse_return(void) {
 }
 
 /// @brief
+Node *parse_oneline_or_multiline() {
+    switch (current.type) {
+    case TOKEN_EOL:
+        expect(TOKEN_EOL);
+        return parse_block();
+
+    default: {
+        Node *ptr = ASTNewNode(NODE_BLOCK, current.line);
+        NodeListInit(&ptr->data.block_data.statements);
+        NodeListAppend(&ptr->data.block_data.statements, parse_statement());
+        return ptr;
+    }
+    }
+}
+
+/// @brief
 Node *parse_while_statement(void) {
     Node *ptr = ASTNewNode(NODE_WHILE_CYCLE, current.line);
 
@@ -514,7 +544,7 @@ Node *parse_while_statement(void) {
     ptr->data.while_data.condition = parse_expression();
     expect(TOKEN_DO);
     expect(TOKEN_EOL);
-    ptr->data.while_data.body = parse_block();
+    ptr->data.while_data.body = parse_oneline_or_multiline();
 
     return ptr;
 }
@@ -526,8 +556,7 @@ Node *parse_for_statement(void) {
     expect(TOKEN_FOR);
     parse_for_header(ptr);
     expect(TOKEN_DO);
-    expect(TOKEN_EOL);
-    ptr->data.for_data.body = parse_block();
+    ptr->data.for_data.body = parse_oneline_or_multiline();
 
     return ptr;
 }
@@ -585,36 +614,48 @@ Node *parse_return_argument(void) {
 }
 
 /// @brief
+void parse_guards_oneline(NodeList *guards) {
+    if (current.type == TOKEN_DO) {
+        return;
+    } else if (current.type == TOKEN_IF) {
+        NodeListAppend(guards, parse_guard());
+        parse_guards_oneline(guards);
+    } else {
+        syntax_error("TOKEN_IF or TOKEN_DO");
+    }
+}
+
+/// @brief
+void parse_guards_mutliline(NodeList *guards) {
+    if (current.type == TOKEN_DEDENT) {
+        return;
+    } else if (current.type == TOKEN_IF) {
+        NodeListAppend(guards, parse_guard());
+        expect(TOKEN_EOL);
+        parse_guards_mutliline(guards);
+    } else {
+        syntax_error("TOKEN_IF or TOKEN_DEDENT");
+    }
+}
+
+/// @brief
 void parse_for_header(Node *ptr) {
     switch (current.type) {
     case TOKEN_ID:
         parse_generator(ptr);
+        parse_guards_oneline(&ptr->data.for_data.guards);
         break;
     case TOKEN_EOL:
         expect(TOKEN_EOL);
         expect(TOKEN_INDENT);
         parse_generator(ptr);
         expect(TOKEN_EOL);
-        parse_list_guards(&ptr->data.for_data.guards);
+
+        parse_guards_mutliline(&ptr->data.for_data.guards);
         expect(TOKEN_DEDENT);
         break;
     default:
         syntax_error("TOKEN_EOL or TOKEN_ID");
-    }
-}
-
-/// @brief
-void parse_list_guards(NodeList *guards) {
-    switch (current.type) {
-    case TOKEN_IF:
-        NodeListAppend(guards, parse_guard());
-        expect(TOKEN_EOL);
-        parse_list_guards(guards);
-        break;
-    case TOKEN_DEDENT:
-        break;
-    default:
-        syntax_error("Expected TOKEN_IF or TOKEN_DEDENT");
     }
 }
 
@@ -740,6 +781,21 @@ void parse_list_arguments(NodeList *arguments) {
         NodeListAppend(arguments, parse_argument());
         parse_more_list_arguments(arguments);
     } else {
+        syntax_error("exor expression");
+    }
+}
+
+/// @brief
+void parse_more_list_arguments_afrer(NodeList *arguments, unsigned int comma_line) {
+    if (current.type == TOKEN_LPAREN) {
+        if (comma_line == current.line) {
+            syntax_error("LPAREN must start on new line");
+        }
+    } else if (is_expression_start(current.type)) {
+        NodeListAppend(arguments, parse_argument());
+        parse_more_list_arguments(arguments);
+
+    } else {
         syntax_error("TOKEN_RPAREN or expression");
     }
 }
@@ -749,11 +805,12 @@ void parse_more_list_arguments(NodeList *arguments) {
     switch (current.type) {
     case TOKEN_RPAREN:
         break;
-    case TOKEN_COMMA:
+    case TOKEN_COMMA: {
+        unsigned int comma_line = current.line;
         expect(TOKEN_COMMA);
-        NodeListAppend(arguments, parse_argument());
-        parse_more_list_arguments(arguments);
+        parse_more_list_arguments_afrer(arguments, comma_line);
         break;
+    }
     default:
         syntax_error("TOKEN_RPAREN or TOKEN_COMMA");
     }
