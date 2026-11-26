@@ -390,6 +390,14 @@ void parse_st_then_part(Node *ptr) {
         ptr->data.if_data.then_part = return_ptr;
         ptr->data.if_data.else_part = parse_st_after_inline_part();
 
+    } else if (current.type == TOKEN_ID && next.type == TOKEN_ASSIGN) {
+        Node *assign = ASTNewNode(NODE_ASSIGN, current.line);
+        assign->data.assign_data.name = expect_id();
+        expect(TOKEN_ASSIGN);
+        assign->data.assign_data.value = parse_expression();
+        ptr->data.if_data.then_part = assign;
+        ptr->data.if_data.else_part = parse_st_after_inline_part();
+
     } else if (is_expression_start(current.type)) {
         ptr->data.if_data.then_part = parse_expression();
         ptr->data.if_data.else_part = parse_st_after_inline_part();
@@ -688,6 +696,8 @@ Node *parse_st_else_part(void) {
         ptr = parse_if_statement();
     } else if (current.type == TOKEN_RETURN) {
         ptr = parse_return();
+    } else if (current.type == TOKEN_ID && next.type == TOKEN_ASSIGN) {
+        ptr = parse_assignment();
     } else if (is_expression_start(current.type)) {
         ptr = parse_expression();
         parse_statement_end();
@@ -715,6 +725,9 @@ void parse_value_then_part(Node *ptr) {
         ptr->data.if_data.then_part = parse_block();
         expect(TOKEN_ELSE);
         ptr->data.if_data.else_part = parse_value_else_part();
+    } else if (current.type == TOKEN_IF) {
+        ptr->data.if_data.then_part = parse_expression();
+        ptr->data.if_data.else_part = parse_value_after_inline_part();
     } else if (is_expression_start(current.type)) {
         ptr->data.if_data.then_part = parse_expression();
         ptr->data.if_data.else_part = parse_value_after_inline_part();
