@@ -1045,7 +1045,8 @@ void get_token(Token *token, ScannerData *scanner) {
                     token_found = 1;
                 }
             } else {
-                if (c != ')' && has_tab) {
+                // tab is not allowed
+                if (has_tab) {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
                 } else if (c != ')' && space_count <= scanner->indent_stack[scanner->stack_top]) {
