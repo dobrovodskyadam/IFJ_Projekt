@@ -36,7 +36,7 @@ void fill_tokens(void) {
 void next_token(void) {
     previous = current;
     current = next;
-    getToken(&next, &scanner);
+    get_token(&next, &scanner);
 
     // Check for lexical error
     if (next.type == TOKEN_ERROR) {
@@ -866,7 +866,7 @@ Node *parse_list_range(void) {
 
 /// @brief
 Node *parse(void) {
-    initScannerData(&scanner);
+    init_scanner_data(&scanner);
     fill_tokens();
     return parse_start();
 }

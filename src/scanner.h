@@ -90,7 +90,7 @@ typedef struct {
     int capacity;
 } TokenString;
 
-/// @brief Structure to hold scanner information from function getToken
+/// @brief Structure to hold scanner information from function get_token
 typedef struct {
     int stack_capacity;
     int *indent_stack;
@@ -107,8 +107,9 @@ typedef struct {
 extern "C" {
 #endif
 
-int initScannerData(ScannerData *scanner);
-void getToken(Token *token, ScannerData *scanner);
+int init_scanner_data(ScannerData *scanner);
+void free_scanner_data(ScannerData *scanner);
+void get_token(Token *token, ScannerData *scanner);
 const char *tokenTypeName(TokenType type);
 
 #ifdef __cplusplus
