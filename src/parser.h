@@ -93,6 +93,9 @@ Node *parse_argument(void);
 // List Literal
 Node *parse_list_literal(void);
 
+// List range
+Node *parse_list_range(void);
+
 // Helper functions declarations
 void fill_tokens(void);
 void next_token(void);

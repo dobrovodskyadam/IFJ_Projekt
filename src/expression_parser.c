@@ -11,8 +11,8 @@
 #include "error.h"
 #include "parser.h"
 #include "scanner.h"
+
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 
@@ -218,6 +218,20 @@ Symbol tokenToSymbol(void) {
     case TOKEN_BY:
         return S_RANGE;
 
+    case TOKEN_IF:
+        switch (previous.type) {
+        case TOKEN_ID:
+        case TOKEN_INT:
+        case TOKEN_DOUBLE:
+        case TOKEN_STRING:
+        case TOKEN_TRUE:
+        case TOKEN_FALSE:
+        case TOKEN_RPAREN:
+            return S_END;
+        default:
+            return S_OPERAND;
+        }
+
     default:
         return S_END;
     }
@@ -397,6 +411,22 @@ Node *parse_expression(void) {
                 StackItem item = {S_OPERAND, 0, parse_list_literal()};
                 pushStack(&stack, item);
 
+            } else if (current.type == TOKEN_LIST && next.type == TOKEN_DOT) {
+                StackItem item = {S_OPERAND, 0, parse_list_range()};
+                pushStack(&stack, item);
+
+                // if in expression is if value, then we parse it and return the node as the operand
+            } else if (current.type == TOKEN_IF) {
+                StackItem item = {S_OPERAND, 0, parse_if_value()};
+                pushStack(&stack, item);
+
+                // Unit written as ()
+            } else if (current.type == TOKEN_LPAREN && next.type == TOKEN_RPAREN) {
+                StackItem item = {S_OPERAND, 0, ASTNewNode(NODE_UNIT, current.line)};
+                pushStack(&stack, item);
+                next_token();
+                next_token();
+
                 // Other cases
             } else {
                 StackItem item = {input, current.type, NULL};
@@ -415,11 +445,12 @@ Node *parse_expression(void) {
             reduce(&stack);
             break;
 
-        case '=':
+        case '=': {
             StackItem item = {input, current.type, NULL};
             pushStack(&stack, item);
             next_token();
             break;
+        }
 
         default:
             syntax_error("expression");

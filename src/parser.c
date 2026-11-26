@@ -17,7 +17,9 @@
 #include "symtable.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 ScannerData scanner;
 Token previous, current, next;
@@ -543,7 +545,6 @@ Node *parse_while_statement(void) {
     expect(TOKEN_WHILE);
     ptr->data.while_data.condition = parse_expression();
     expect(TOKEN_DO);
-    expect(TOKEN_EOL);
     ptr->data.while_data.body = parse_oneline_or_multiline();
 
     return ptr;
@@ -568,6 +569,9 @@ Node *parse_value_or_expr(void) {
     switch (current.type) {
     case TOKEN_IF:
         ptr = parse_if_value();
+        if (previous.type != TOKEN_DEDENT) {
+            parse_statement_end();
+        }
         break;
     default:
         if (is_expression_start(current.type)) {
@@ -753,7 +757,6 @@ Node *parse_value_else_part(void) {
         ptr = parse_if_value();
     } else if (is_expression_start(current.type)) {
         ptr = parse_expression();
-        parse_statement_end();
     } else {
         syntax_error("TOKEN_EOL or expression");
     }
@@ -777,17 +780,17 @@ void parse_list_arguments(NodeList *arguments) {
     if (current.type == TOKEN_RPAREN) {
         return;
 
-    } else if (is_expression_start(current.type)) {
+    } else if (is_expression_start(current.type) || current.type == TOKEN_IF) {
         NodeListAppend(arguments, parse_argument());
         parse_more_list_arguments(arguments);
     } else {
-        syntax_error("exor expression");
+        syntax_error("TOKEN_RPAREN or expression");
     }
 }
 
 /// @brief
 void parse_more_list_arguments_afrer(NodeList *arguments, unsigned int comma_line) {
-    if (current.type == TOKEN_LPAREN) {
+    if (current.type == TOKEN_RPAREN) {
         if (comma_line == current.line) {
             syntax_error("LPAREN must start on new line");
         }
@@ -829,6 +832,34 @@ Node *parse_list_literal(void) {
     parse_list_arguments(&ptr->data.list_data.items);
     expect(TOKEN_RPAREN);
 
+    return ptr;
+}
+
+/// @brief
+Node *parse_list_range(void) {
+    Node *ptr = ASTNewNode(NODE_FUNCTION_CALL, current.line);
+    expect(TOKEN_LIST);
+    expect(TOKEN_DOT);
+
+    char *id = expect_id();
+    char *name = malloc(strlen("List.") + strlen(id) + 1);
+    if (!name) {
+        error_exit(ERR_INTERNAL, 0, "Memory allocation fail: parse_list_range");
+    }
+    strcpy(name, "List.");
+    strcat(name, id);
+    free(id);
+
+    ptr->data.call_data.name = name;
+
+    expect(TOKEN_LPAREN);
+    parse_list_arguments(&ptr->data.call_data.arguments);
+    if (ptr->data.call_data.arguments.count == 2) {
+        Node *step = ASTNewNode(NODE_INT, current.line);
+        step->data.int_value = 1;
+        NodeListAppend(&ptr->data.call_data.arguments, step);
+    }
+    expect(TOKEN_RPAREN);
     return ptr;
 }
 
