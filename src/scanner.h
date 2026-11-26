@@ -108,6 +108,7 @@ extern "C" {
 #endif
 
 int init_scanner_data(ScannerData *scanner);
+void free_scanner_data(ScannerData *scanner);
 void get_token(Token *token, ScannerData *scanner);
 const char *tokenTypeName(TokenType type);
 

@@ -133,13 +133,15 @@ void unread_char(int c, FILE *source, ScannerData *scanner) {
     ungetc(c, source);
 }
 
+void free_scanner_data(ScannerData *scanner) {
+    free(scanner->indent_stack);
+    scanner->indent_stack = NULL;
+}
 
 /// @brief Free allocated memory of the token string buffer
 /// @param token_buffer Pointer to the token string buffer to free
 void free_token_string(TokenString *token_buffer) {
     free(token_buffer->str);
-    token_buffer->capacity = 0;
-    token_buffer->length = 0;
     token_buffer->str = NULL;
 }
 
