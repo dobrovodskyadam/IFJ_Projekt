@@ -1,0 +1,54 @@
+1. Řešitelé:
+vedoucí - Adam - xdobroa00 - 282342 - 25%
+člen - Tomáš - xrysavp00 - 282342 - 25%
+člen - Petr - xgrubet01 - 282848 - 25%
+člen - Lukáš - xsofkal00 - 281834 - 25%
+
+Varianta: TRP-izp
+Implementovaná rozšíření: FUNEXP, BOOLTHEN, CONTROL, LISTS
+Repozitář: https://github.com/dobrovodskyadam/IFJ_Projekt
+
+2. Rozdělení práce
+Prácí jsme si rozdělily hned při prvním fyzickém setkání, podle toho, co se každému členu týmu líbilo.
+Adam si zvolil...
+Petr si zvolil...
+Tomáš si zvolil...
+Lukáš – abstraktní syntaktický strom, syntaktická a sémantická analýza. Tyto zmíněné části spolu úzce souvisí, proto je dělal jeden člověk
+Dále vytvořil návrh gramatiky pro celkový projekt.
+V pozdější fázi projektu upravil tabulku symbolů (symtable) tak, aby vyhovovala potřebám sémantické analýzy.
+
+
+3. Popis spolupráce
+Všechna komunikace probíhala přes vlastní server na Discordu, kde jsme pořádali pravidelné schůzky a hlásili chyby.
+Repozitář na GitHubu založil Adam a nastavil ochranu hlavní větve, tedy všechny změny do ní lze začlenit pouze pomocí pull request,
+který musí schválit jiný člen týmu, zpravidla tím byl vedoucí.
+
+Zpočátku jsme testy psali podle zadání ještě před implementací, v pozdějších fázích to však kvůli neznalosti tématu nebylo příliš jednoduché.
+Před odevzdáním jsme se intenzivně věnovali hledání chyb, a to i s pomocí nástrojů AI. Využívali jsme:
+- jednotkové testy lexikálního analyzátoru v knihovně Google Test
+- pozitivní a negativní testy syntaktické a sémantické analýzy
+- porovnání chování s jazykem Scala 3.10.1
+- oveření v čistém prostředí pomocí Docker a na serveru Merlin, který slouží jako referenční stroj
+
+Pro formátování jsme používali clang-fornat se stylem odvozeným od LLVM (BasedOnStyle: LLVM). Všechny soubory .c a .h lze naformátovat příkazem
+`make format`. Některé úseky kódů, kde automatické formátování zhoršovalo čitelnost, jsou ohraničeny // clang-format off a // clang-format on.
+
+4. Blokové schéma
+
+5. Diagram
+
+6. LL gramatika, LL table, precedence table
+
+7. Stručný popis každého modulu
+ast.c -
+error.c -
+expression_parser.c -
+parser.c - 
+semantic.c -
+
+8. AI prostředků
+Lukáš používal Claude Code (převážně model Claude Opus 5.5, pro jednoduché dotazy Claude Haiku 5.5) pro:
+- konfigurace terminálových nástrojů jako například Valgrind (vč. Massif) a Coursier (správce aplikací a knihoven pro Scalu) a další
+- vytvoření základních testů před zahájením implementace modulu sémantické analýzy
+- posouzení některých návrhových rozhodnutí
+- pomocné funkce pro debugging
