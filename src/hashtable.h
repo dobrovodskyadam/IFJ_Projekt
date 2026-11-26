@@ -15,7 +15,7 @@
 struct Node;
 
 typedef struct htab_item htab_item_t;
-typedef htab_item_t *htab_t;
+typedef struct htab *htab_t;
 
 htab_t htab_init(void);
 

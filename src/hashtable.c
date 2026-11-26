@@ -10,10 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "hashtable.h"
 
 #define HTAB_INIT_CAPACITY 1023
+
+#define BITS_PER_ULONG (sizeof(unsigned long) * CHAR_BIT)
 
 /// @param NOT Never used item
 /// @param USE Item currently in use
@@ -32,10 +35,81 @@ struct htab_item {
     item_used used;
 };
 
+struct htab {
+    unsigned cap;
+    unsigned size;
+    htab_item_t *items;
+};
+
+static unsigned long *sieve = NULL;
+static unsigned sieve_size = 0;
+
+static bool sieve_get(unsigned idx){
+    return sieve[idx / BITS_PER_ULONG] >> (idx % BITS_PER_ULONG) & 1UL;
+}
+
+static void sieve_set(unsigned idx){
+    unsigned long mask = 1UL << (idx % BITS_PER_ULONG);
+    sieve[idx / BITS_PER_ULONG] = sieve[idx / BITS_PER_ULONG] | mask;
+}
+
+static void sieve_resize(unsigned new_size){
+    if(new_size <= sieve_size) return;
+    unsigned new_size_blocks = (new_size / BITS_PER_ULONG ) + (new_size % BITS_PER_ULONG != 0);
+    unsigned old_size_blocks = sieve_size / BITS_PER_ULONG;
+
+    unsigned long *tmp = realloc(sieve, new_size_blocks * sizeof(unsigned long));
+    if (tmp == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(tmp + old_size_blocks, 0, 
+            (new_size_blocks - old_size_blocks) * sizeof(unsigned long));
+
+    unsigned old_size = sieve_size;
+    sieve_size = new_size_blocks * BITS_PER_ULONG;
+    sieve = tmp;
+
+    if(old_size_blocks == 0){
+        sieve_set(0);
+        sieve_set(1);
+    }
+
+    for(unsigned idx = (old_size == 0 ? 4 : old_size); idx < sieve_size; idx += 2)
+        sieve_set(idx);
+
+    for(unsigned prime = 3; prime <= (sieve_size - 1) / prime; prime += 2){
+        if(!sieve_get(prime)){
+            unsigned start = prime * prime;
+            if(start < old_size) start = old_size;
+            while(start % prime != 0) start ++;
+            if(start % 2 == 0) start += prime;
+
+            for(unsigned idx = start; idx < sieve_size; idx += 2 * prime)
+                sieve_set(idx);
+        }
+    }
+
+}
+
+static unsigned next_prime(size_t min){
+    if(min <= 2) return 2;
+    if(min % 2 == 0) min ++;
+    while(true){
+        if(min >= sieve_size){
+            sieve_resize(sieve_size == 0 ? HTAB_INIT_CAPACITY : sieve_size * 2);
+            continue;
+        } 
+        if(!sieve_get(min)) return min;
+        min += 2;
+    }
+}
+
 /// @brief Standart hash function, creates hash from id
 /// @param id Identifier of symbol
 /// @return Created hash
-unsigned hash_func(const char *id) {
+static unsigned hash_func(const char *id) {
     unsigned hash = 0;
     size_t len = strlen(id);
     for (size_t idx = 0; idx < len; idx++) {
@@ -47,12 +121,21 @@ unsigned hash_func(const char *id) {
 /// @brief Initialization of hashtable
 /// @return Pointer to hashtable
 htab_t htab_init(void) {
-    htab_t tab = (htab_t)calloc(HTAB_INIT_CAPACITY, sizeof(htab_item_t));
+    htab_t tab = (htab_t)malloc(sizeof(*tab));
     if (tab == NULL) {
         fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 
+    tab->items = calloc(HTAB_INIT_CAPACITY, sizeof(htab_item_t));
+    if (tab->items == NULL) {
+        free(tab);
+        fprintf(stderr, "Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    tab->cap = HTAB_INIT_CAPACITY;
+    tab->size = 0;
     return tab;
 }
 
@@ -63,26 +146,28 @@ htab_t htab_init(void) {
 /// @param id_cnt Current id_cnt
 /// @return True if successfully added
 bool hash_item_add(htab_t tab, char *id, struct Node *decl, unsigned id_cnt) {
-    if (tab == NULL || id == NULL || hash_item_lookup(tab, id) != NULL)
+    if (tab == NULL || tab->items == NULL || id == NULL || hash_item_lookup(tab, id) != NULL)
         return false;
 
-    unsigned hash = hash_func(id);
+    unsigned hash = hash_func(id) % tab->cap;
     int cnt = 0;
 
-    while (cnt < HTAB_INIT_CAPACITY && tab[hash % HTAB_INIT_CAPACITY].used == USE) {
-        hash++;
+    while (cnt < tab->cap && tab->items[hash].used == USE) {
+        hash = hash + 1 % tab->cap;
         cnt++;
     }
 
-    if (cnt == HTAB_INIT_CAPACITY)
+    if (cnt == tab->cap)
         return false;
-    unsigned idx = hash % HTAB_INIT_CAPACITY;
+    unsigned idx = hash;
 
     // Store the pointer
-    tab[idx].id = id;
-    tab[idx].decl = decl;
-    tab[idx].id_cnt = id_cnt;
-    tab[idx].used = USE;
+    tab->items[idx].id = id;
+    tab->items[idx].decl = decl;
+    tab->items[idx].id_cnt = id_cnt;
+    tab->items[idx].used = USE;
+
+    tab->size ++;
     return true;
 }
 
@@ -93,15 +178,15 @@ bool hash_item_add(htab_t tab, char *id, struct Node *decl, unsigned id_cnt) {
 htab_item_t *hash_item_lookup(htab_t tab, char *id) {
     if(tab == NULL || id == NULL) return NULL;
     htab_item_t *item = NULL;
-    unsigned hash = hash_func(id);
+    unsigned hash = hash_func(id) % tab->cap;
     int cnt = 0;
-    while (cnt < HTAB_INIT_CAPACITY &&
-           (tab[hash % HTAB_INIT_CAPACITY].used == USE || tab[hash % HTAB_INIT_CAPACITY].used == DEL)) {
-        if (tab[hash % HTAB_INIT_CAPACITY].used == USE && !strcmp(id, tab[hash % HTAB_INIT_CAPACITY].id)) {
-            item = &tab[hash % HTAB_INIT_CAPACITY];
+    while (cnt < tab->cap &&
+           (tab->items[hash].used == USE || tab->items[hash].used == DEL)) {
+        if (tab->items[hash].used == USE && !strcmp(id, tab->items[hash].id)) {
+            item = &tab->items[hash];
             break;
         }
-        hash++;
+        hash = (hash + 1) % tab->cap;
         cnt++;
     }
     return item;
@@ -112,13 +197,17 @@ htab_item_t *hash_item_lookup(htab_t tab, char *id) {
 /// @param id Identifier of symbol
 void hash_item_del(htab_t tab, char *id) {
     htab_item_t *item = hash_item_lookup(tab, id);
-    if (item != NULL && item->used == USE)
+    if (item != NULL && item->used == USE){
         item->used = DEL;
+        tab->size --;
+    }
 }
 
 /// @brief Destruction of hashtable
 /// @param tab Hashtable
 void htab_dtor(htab_t tab) {
+    if(tab == NULL) return;
+    free(tab->items);
     free(tab);
 }
 
