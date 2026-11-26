@@ -1,0 +1,21 @@
+Generátor cieľového kódu
+
+Generovanie cieľového kódu prebieha v dvoch krokoch. Ako prvé sa sa AST prevedie na trojadresný medzikód a až ten sa nakoniec prevedie do jazyka IFJcode26. Toto rozdelenie zjednodušuje oba moduli a zároveň umožnuje implementáciu optimalizátora kódu.
+
+tac_gen
+Generátor TAC rekurzívne prechádza uzli AST a generuje z nich jednoduché inštukcie v tvare operácia, výsledok, operand a, operand b. Operandom je npr. premenná, dočasná premenná, konštanta alebo návestie. Logika prekladu je rozdelená na dve časti:
+* Vyhodnocovanie výrazov: Zabezpečuje rozklad zložených výrazov pomocou dočasných premenných, implicitné pretypovanie hodnôt (Int na Double), skrátené vyhodnocovanie logických operátorov a volania používateľských aj vstavaných funkcií.
+* Spracovanie príkazov a riadenie toku: Prekladá bloky kódu, vetvenia (if/else) a cykly (while, for) do lineárnej postupnosti inštrukcií riadenej návestiami a skokmi.
+
+Súčasťou tejto časti je aj správa rozsahov platnosti premenných (scope). Pri vstupe do vnoreného bloku sa uloží aktuálny stav viditeľných premenných a po jeho opustení sa obnoví. Každej deklarovanej premennej sa zároveň pridelí jednoznačný interný identifikátor, vďaka čomu sa bezpečne podporuje prekrývanie premenných (shadowing) a predchádza sa kolíziám názvov v cieľovom kóde.
+
+generátor cieľového kódu
+generátor prechádza pripravený zoznam TAC inštrukcií a prekladá ich na inštrukcie ijfcode26. Zároveň obstaráva:
+	Správu rámcov a deklarácii: : Na začiatku hlavného tela programu aj pri vstupe do každej funkcie automaticky vyhľadá všetky použité lokálne a dočasné premenné a vygeneruje pre ne príslušné inštrukcie DEFVAR
+	Volanie funkcií: Pri volaní funkcií vytvára dočasný rámec (CREATEFRAME), naplní ho argumentmi, presunie rámec na zásobník (PUSHFRAME / POPFRAME) a po návrate prevezme návratovú hodnotu.
+
+Použitie AI prostredkov:
+Použité modely Claude Sonnet 5.5 a Gemini
+* AI som využil predovšetkým na testovanie a debugovanie častí implementácie generatora
+* Dovysvetlenie nejasných častí zadania
+* Posúdenie návrhov implementácii.
