@@ -12,12 +12,13 @@
 #include "ast.h"
 #include "error.h"
 #include "expression_parser.h"
+#include "generator.h"
 #include "scanner.h"
 #include "semantic.h"
 #include "symtable.h"
+#include "tac_gen.h"
 
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -879,6 +880,16 @@ int main(void) {
 #endif
 
     semantic_analyze(root);
+
+    TacList tac;
+    tac_list_init(&tac);
+
+    tac_gen_statement(root, &tac);
+
+    generate_ifjcode26(&tac, stdout);
+
+    tac_list_free(&tac);
+
     ASTFree(root);
     TypeFreeAll();
     return 0;
