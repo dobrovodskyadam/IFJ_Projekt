@@ -1,3 +1,12 @@
+/// @file tac_gen.h
+/// @brief Header file of three-address code generator
+/// @date 14-11-2026
+///
+/// @author Adam Dobrovodský (xdobroa00)
+/// @author Email: xdobroa00@stud.fit.vutbr.cz
+/// Faculty of Information Technology, Brno University of Technology
+// clang-format off
+
 #ifndef TAC_GEN_H
 #define TAC_GEN_H
 #include <stdio.h>
@@ -50,7 +59,9 @@ typedef struct
    DataType type;
 }ScopeVar;
 
-
 void tac_gen_reset(void);
+void tac_list_init(TacList *list);
+void tac_list_free(TacList *list);
+void tac_gen_statement(Node *node, TacList *list);
 
 #endif

@@ -1,3 +1,11 @@
+/// @file generator.c
+/// @brief Module Generates IFJcode26 code from TAC instructions,
+/// @date 14-11-2026
+///
+/// @author Adam Dobrovodský (xdobroa00)
+/// @author Email: xdobroa00@stud.fit.vut.cz
+/// Faculty of Information Technology, Brno University of Technology
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,11 +34,13 @@ static void defined_reset(void)
     var_seen_cap = 0;
 }
 
+/// @brief Checks whether a variable name is a parameter slot (%1, %2, ...)
 static bool is_param_slot(const char *name)
 {
     return name[0] == '%' && isdigit((unsigned char)name[1]);
 }
 
+/// @brief Tells whether a temporary variable is met for the first time in the current function
 static bool first_time_temp(int id)
 {
     if (id >= temp_seen_cap)
@@ -53,6 +63,7 @@ static bool first_time_temp(int id)
     return true;
 }
 
+/// @brief Tells whether a named variable is met for the first time in the current function
 static bool first_time_var(const char *name)
 {
     for (int i = 0; i < var_seen_cnt; i++)
@@ -71,7 +82,7 @@ static bool first_time_var(const char *name)
     var_seen[var_seen_cnt++] = name;
     return true;
 }
-
+/// @brief Print DEFVAR for an operand if it is a variable or a temporary that was not defined yet
 static void define_operand(Operand op, FILE *out)
 {
     if(op.kind == OP_TEMP && first_time_temp(op.data.temp_id))
@@ -81,12 +92,12 @@ static void define_operand(Operand op, FILE *out)
     else if (op.kind == OP_VAR && !is_param_slot(op.data.name) && first_time_var(op.data.name))
         fprintf(out, "DEFVAR LF@%s\n", op.data.name);
 }
-
+/// @brief Checks whether a TAC instruction is a label of a function
 static bool is_function_label(const TACInstr *in)
 {
     return in->op == TAC_LABEL && in->res.kind == OP_VAR;
 }
-
+/// @brief Emits DEFVAR for all variables and temporaries
 static void print_defvars(const TacList *list, int from, int to, FILE *out)
 {
     defined_reset();
@@ -105,12 +116,12 @@ static void print_defvars(const TacList *list, int from, int to, FILE *out)
 
 static int function_end(const TacList *list, int start)
 {
-    for (int j = start; j < list->count; j++)
-        if (list->items[j].op == TAC_RETURN)
-            return j;
+    for (int i = start; i < list->count; i++)
+        if (list->items[i].op == TAC_RETURN)
+            return i;
     return list->count;
 }
-
+/// @brief Prints an operand in the IFJcode26 notation
 static void print_operand(Operand op, FILE *out)
 {
     switch (op.kind)
@@ -155,22 +166,22 @@ static void print_operand(Operand op, FILE *out)
         break;
     }
 }
-
+/// @brief Prints an instruction with the given name followed by all its used operands
 static void print_generic(FILE *out, const char *mnem, TACInstr *instr)
 {
     fprintf(out, "%s",mnem);
     const Operand *ops[3] = {&instr->res, &instr->a, &instr->b};
-    for(int k = 0; k < 3; k++)
+    for(int i = 0; i< 3; i++)
     {
-        if (ops[k]->kind != OP_NONE)
+        if (ops[i]->kind != OP_NONE)
         {
             fputc(' ',out);
-            print_operand(*ops[k],out);
+            print_operand(*ops[i],out);
         }
     }
     fputc('\n',out);
 }
-
+/// @brief Generates the whole IFJcode26 program from a TAC list
 void generate_ifjcode26(TacList *tac_list, FILE *output)
 {
     param_idx = 0;
@@ -179,7 +190,12 @@ void generate_ifjcode26(TacList *tac_list, FILE *output)
     fprintf(output,"PUSHFRAME\n");
     int first_fn = tac_list->count;
     for (int i = 0; i < tac_list->count; i++)
-    if (is_function_label(&tac_list->items[i])) { first_fn = i; break; }
+    {
+        if (is_function_label(&tac_list->items[i])) 
+        { 
+            first_fn = i; break; 
+        }
+    }
     print_defvars(tac_list, 0, first_fn, output);
 
     for(int i = 0; i < tac_list->count; i++)
