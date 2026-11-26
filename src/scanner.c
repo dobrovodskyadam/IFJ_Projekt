@@ -837,9 +837,6 @@ void getToken(Token *token, ScannerData *scanner) {
                     scanner->new_line = 1;
                     token_found = 1;
                 }
-            } else if (c == EOF) {
-                token->type = TOKEN_EOF;
-                token_found = 1;
             } else {
                 state = STATE_COMMENT;
             }
@@ -864,6 +861,8 @@ void getToken(Token *token, ScannerData *scanner) {
             if (c == '*') {
                 comment_nesting++;
                 state = STATE_COMMENT_NESTING;
+            } else if (c == '/') {
+                state = STATE_COMMENT_NESTING_START;
             } else if (c == EOF) {
                 token_found = 1;
                 token->type = TOKEN_ERROR;
@@ -930,9 +929,6 @@ void getToken(Token *token, ScannerData *scanner) {
                     token_found = 1;
                     token->type = TOKEN_ERROR;
                 }
-            } else if (c == EOF) {
-                token_found = 1;
-                token->type = TOKEN_EOF;
             } else {
                 token_found = 1;
                 token->type = TOKEN_ERROR;
