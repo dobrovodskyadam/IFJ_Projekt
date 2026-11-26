@@ -118,7 +118,7 @@ bool item_lookup(symtab_t *stab, char *id) {
 /// @param stab Pointer to table of symbols
 /// @param id Identifier of symbol
 void item_del(symtab_t *stab, char *id) {
-    if (stab == NULL)
+    if (stab == NULL || stab->top == NULL)
         return;
 
     hash_item_del(stab->top->scope, id);

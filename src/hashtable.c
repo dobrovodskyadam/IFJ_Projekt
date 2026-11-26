@@ -13,6 +13,8 @@
 
 #include "hashtable.h"
 
+#define HTAB_INIT_CAPACITY 1023
+
 /// @param NOT Never used item
 /// @param USE Item currently in use
 /// @param DEL Preveously used, now deleted
@@ -23,12 +25,12 @@ typedef enum { NOT, USE, DEL } item_used;
 /// @param decl   Declaration node (FUNCTION_DEF, PARAMETER or VARIABLE_DECLARATION)
 /// @param id_cnt State of id_cnt from symtable in moment of adding (unique number)
 /// @param used   NOT == never used, USE == used, DEL == deleted
-typedef struct htab_item {
+struct htab_item {
     const char *id;
     struct Node *decl;
     unsigned id_cnt;
     item_used used;
-} htab_item_t;
+};
 
 /// @brief Standart hash function, creates hash from id
 /// @param id Identifier of symbol
@@ -45,7 +47,7 @@ unsigned hash_func(const char *id) {
 /// @brief Initialization of hashtable
 /// @return Pointer to hashtable
 htab_t htab_init(void) {
-    htab_t tab = (htab_t)calloc(MAX_HTAB_ITEMS, sizeof(htab_item_t));
+    htab_t tab = (htab_t)calloc(HTAB_INIT_CAPACITY, sizeof(htab_item_t));
     if (tab == NULL) {
         fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
@@ -60,21 +62,21 @@ htab_t htab_init(void) {
 /// @param decl Declaration node of the symbol
 /// @param id_cnt Current id_cnt
 /// @return True if successfully added
-bool hash_item_add(htab_t tab, char *id, struct Node *decl, int id_cnt) {
+bool hash_item_add(htab_t tab, char *id, struct Node *decl, unsigned id_cnt) {
     if (tab == NULL || id == NULL || hash_item_lookup(tab, id) != NULL)
         return false;
 
     unsigned hash = hash_func(id);
     int cnt = 0;
 
-    while (cnt < MAX_HTAB_ITEMS && tab[hash % MAX_HTAB_ITEMS].used == USE) {
+    while (cnt < HTAB_INIT_CAPACITY && tab[hash % HTAB_INIT_CAPACITY].used == USE) {
         hash++;
         cnt++;
     }
 
-    if (cnt == MAX_HTAB_ITEMS)
+    if (cnt == HTAB_INIT_CAPACITY)
         return false;
-    unsigned idx = hash % MAX_HTAB_ITEMS;
+    unsigned idx = hash % HTAB_INIT_CAPACITY;
 
     // Store the pointer
     tab[idx].id = id;
@@ -89,13 +91,14 @@ bool hash_item_add(htab_t tab, char *id, struct Node *decl, int id_cnt) {
 /// @param id Identifier of symbol
 /// @return Pointer to searched item
 htab_item_t *hash_item_lookup(htab_t tab, char *id) {
+    if(tab == NULL || id == NULL) return NULL;
     htab_item_t *item = NULL;
     unsigned hash = hash_func(id);
     int cnt = 0;
-    while (cnt < MAX_HTAB_ITEMS &&
-           (tab[hash % MAX_HTAB_ITEMS].used == USE || tab[hash % MAX_HTAB_ITEMS].used == DEL)) {
-        if (tab[hash % MAX_HTAB_ITEMS].used == USE && !strcmp(id, tab[hash % MAX_HTAB_ITEMS].id)) {
-            item = &tab[hash % MAX_HTAB_ITEMS];
+    while (cnt < HTAB_INIT_CAPACITY &&
+           (tab[hash % HTAB_INIT_CAPACITY].used == USE || tab[hash % HTAB_INIT_CAPACITY].used == DEL)) {
+        if (tab[hash % HTAB_INIT_CAPACITY].used == USE && !strcmp(id, tab[hash % HTAB_INIT_CAPACITY].id)) {
+            item = &tab[hash % HTAB_INIT_CAPACITY];
             break;
         }
         hash++;
