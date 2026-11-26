@@ -1031,7 +1031,7 @@ void getToken(Token *token, ScannerData *scanner) {
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
-                    unreadChar(c, stdin, scanner);
+                    ungetc(next_c, stdin);
                     if (has_tab || space_count <= scanner->indent_stack[scanner->stack_top]) {
                         token->type = TOKEN_ERROR;
                     } else {
