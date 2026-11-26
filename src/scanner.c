@@ -50,9 +50,9 @@ typedef enum {
     STATE_PAREN_INDENT
 } STATE;
 
-/// @brief Initialization of structure to hold scanner information from function getToken
-/// @param scanner Pointer to the scanner data structue to initialize
-/// @return 1 if succesfull, otherwise 0
+/// @brief Initialization of structure to hold scanner information from function get_token
+/// @param scanner Pointer to the scanner data structure to initialize
+/// @return 1 if successful, otherwise 0
 int init_scanner_data(ScannerData *scanner) {
     scanner->stack_capacity = INDENT_STACK_INIT_CAPACITY;
     scanner->indent_stack = malloc(scanner->stack_capacity * sizeof(int));
@@ -71,7 +71,7 @@ int init_scanner_data(ScannerData *scanner) {
 
 /// @brief Add more capacity for scanner, if capacity for indent stack is full
 /// @param scanner Pointer to the scanner data structure
-/// @return 1 if succesfull, otherwise 0
+/// @return 1 if successful, otherwise 0
 int add_stack_capacity(ScannerData *scanner) {
     int new_capacity = scanner->stack_capacity * 2;
     int *tmp = realloc(scanner->indent_stack, new_capacity * sizeof(int));
@@ -85,7 +85,7 @@ int add_stack_capacity(ScannerData *scanner) {
 
 /// @brief Initialization of the token string buffer for token
 /// @param token_buffer Pointer to the token string buffer to initialize
-/// @return 1 if succesfull, otherwise 0
+/// @return 1 if successful, otherwise 0
 int init_token_string(TokenString *token_buffer) {
     token_buffer->length = 0;
     token_buffer->capacity = TOKEN_BUFFER_INIT_CAPACITY;
@@ -100,7 +100,7 @@ int init_token_string(TokenString *token_buffer) {
 /// @brief Add new character to the token string buffer
 /// @param token_buffer Pointer to the token string buffer
 /// @param c Character to add
-/// @return 1 if succesfull, otherwise 0
+/// @return 1 if successful, otherwise 0
 int add_char(TokenString *token_buffer, char c) {
     if (token_buffer->length == token_buffer->capacity) {
         int new_capacity = token_buffer->capacity * 2;
@@ -117,6 +117,9 @@ int add_char(TokenString *token_buffer, char c) {
     return 1;
 }
 
+/// @brief Read next character from stdin, add '\n' before EOF if missing
+/// @param scanner Pointer to the scanner data structure
+/// @return Read character or '\n'
 int read_char(ScannerData *scanner) {
     int c = fgetc(stdin);
     if (c == EOF && scanner->last_char != '\n' && scanner->last_char != EOF) {
@@ -126,6 +129,10 @@ int read_char(ScannerData *scanner) {
     return c;
 }
 
+/// @brief Return character back to stdin, decrease line if it is '\n'
+/// @param c Character to return
+/// @param source File where to return character
+/// @param scanner Pointer to the scanner data structure
 void unread_char(int c, FILE *source, ScannerData *scanner) {
     if (c == '\n') {
         scanner->line--;
@@ -133,6 +140,8 @@ void unread_char(int c, FILE *source, ScannerData *scanner) {
     ungetc(c, source);
 }
 
+/// @brief Free allocated memory of the scanner data
+/// @param scanner Pointer to the scanner data structure to free
 void free_scanner_data(ScannerData *scanner) {
     free(scanner->indent_stack);
     scanner->indent_stack = NULL;
@@ -149,7 +158,7 @@ void free_token_string(TokenString *token_buffer) {
 /// @param token Pointer to structure where is token store
 /// @param scanner Pointer to the scanner data structure
 void get_token(Token *token, ScannerData *scanner) {
-    // if dedent is not done from previouse
+    // if dedent is not done from previous
     if (scanner->dedent > 0) {
         scanner->dedent--;
         token->type = TOKEN_DEDENT;
@@ -192,7 +201,7 @@ void get_token(Token *token, ScannerData *scanner) {
                     state = STATE_INDENT;
                     has_tab = 1;
                 } else {
-                     unread_char(c, stdin, scanner);
+                    unread_char(c, stdin, scanner);
                     state = STATE_INDENT;
                 }
             } else if (isalpha(c)) {
@@ -242,18 +251,17 @@ void get_token(Token *token, ScannerData *scanner) {
             } else if (c == '|') {
                 state = STATE_OR;
             } else if (c == ',') {
-              token->type = TOKEN_COMMA;
-              token_found = 1;
-              break;
-            }
-            else if (c == '[') {
-              token->type = TOKEN_LBRACKET;
-              token_found = 1;
-              break;
+                token->type = TOKEN_COMMA;
+                token_found = 1;
+                break;
+            } else if (c == '[') {
+                token->type = TOKEN_LBRACKET;
+                token_found = 1;
+                break;
             } else if (c == ']') {
-              token->type = TOKEN_RBRACKET;
-              token_found = 1;
-               break;
+                token->type = TOKEN_RBRACKET;
+                token_found = 1;
+                break;
             } else if (c == '(') {
                 token->type = TOKEN_LPAREN;
                 scanner->paren_depth++;
@@ -298,10 +306,12 @@ void get_token(Token *token, ScannerData *scanner) {
             break;
 
         case STATE_NUM:
-            if ((isdigit(c) || c == '_') && token_buffer.str[0] == '0' && token_buffer.length == 1 && token->type == TOKEN_INT) {
+            // number cannot start with 0 followed by digit or underscore
+            if ((isdigit(c) || c == '_') && token_buffer.str[0] == '0' &&
+                token_buffer.length == 1 && token->type == TOKEN_INT) {
                 token->type = TOKEN_ERROR;
                 token_found = 1;
-            }else if (isdigit(c)) {
+            } else if (isdigit(c)) {
                 state = STATE_NUM;
                 if (!add_char(&token_buffer, c)) {
                     state = STATE_ERROR_MEMORY;
@@ -489,7 +499,7 @@ void get_token(Token *token, ScannerData *scanner) {
                     state = STATE_ERROR_MEMORY;
                 } else {
                     unread_char(c, stdin, scanner);
-                    // cheking if its @main
+                    // checking if its @main
                     if (token_buffer.str[0] == '@') {
                         if (strcmp(token_buffer.str, "@main") == 0) {
                             token->type = TOKEN_MAIN;
@@ -497,7 +507,7 @@ void get_token(Token *token, ScannerData *scanner) {
                             token->type = TOKEN_ERROR;
                         }
                     } else {
-                        // keywords cheking
+                        // keywords checking
                         if (strcmp(token_buffer.str, "def") == 0) {
                             token->type = TOKEN_DEF;
                         } else if (strcmp(token_buffer.str, "do") == 0) {
@@ -541,9 +551,9 @@ void get_token(Token *token, ScannerData *scanner) {
                         } else if (strcmp(token_buffer.str, "by") == 0) {
                             token->type = TOKEN_BY;
                         } else if (strcmp(token_buffer.str, "true") == 0) {
-                           token->type = TOKEN_TRUE;
+                            token->type = TOKEN_TRUE;
                         } else if (strcmp(token_buffer.str, "false") == 0) {
-                          token->type = TOKEN_FALSE;
+                            token->type = TOKEN_FALSE;
                         } else {
                             token->type = TOKEN_ID;
                             token->value.str_val = malloc(token_buffer.capacity * sizeof(char));
@@ -951,7 +961,7 @@ void get_token(Token *token, ScannerData *scanner) {
                 has_tab = 0;
                 space_count = 0;
                 state = STATE_START;
-                // checkin if it comments
+                // checking if it comments
             } else if (c == '/') {
                 int next_c = fgetc(stdin);
                 if (next_c == '/') {
@@ -960,6 +970,7 @@ void get_token(Token *token, ScannerData *scanner) {
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
+                    // not a comment, return next_c back
                     ungetc(next_c, stdin);
                     if (has_tab) {
                         token->type = TOKEN_ERROR;
@@ -1027,7 +1038,7 @@ void get_token(Token *token, ScannerData *scanner) {
                 has_tab = 0;
                 space_count = 0;
                 state = STATE_PAREN_INDENT;
-                // checkin if it comments
+                // checking if it comments
             } else if (c == '/') {
                 int next_c = fgetc(stdin);
                 if (next_c == '/') {
@@ -1036,7 +1047,9 @@ void get_token(Token *token, ScannerData *scanner) {
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
+                    // not a comment, return next_c back
                     ungetc(next_c, stdin);
+                    // division must be indented more than current block
                     if (has_tab || space_count <= scanner->indent_stack[scanner->stack_top]) {
                         token->type = TOKEN_ERROR;
                     } else {
@@ -1049,12 +1062,15 @@ void get_token(Token *token, ScannerData *scanner) {
                 if (has_tab) {
                     token->type = TOKEN_ERROR;
                     token_found = 1;
+                    // line is not indented more than current block except closing parenthesis
                 } else if (c != ')' && space_count <= scanner->indent_stack[scanner->stack_top]) {
                     scanner->paren_depth = 0;
                     unread_char(c, stdin, scanner);
                     scanner->new_line = 1;
+                    // to get syntax error
                     token->type = TOKEN_EOL;
                     token_found = 1;
+                    // continue of expression inside parentheses
                 } else {
                     unread_char(c, stdin, scanner);
                     state = STATE_START;

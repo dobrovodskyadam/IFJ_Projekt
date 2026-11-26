@@ -90,7 +90,7 @@ typedef struct {
     int capacity;
 } TokenString;
 
-/// @brief Structure to hold scanner information from function getToken
+/// @brief Structure to hold scanner information from function get_token
 typedef struct {
     int stack_capacity;
     int *indent_stack;
