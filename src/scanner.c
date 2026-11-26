@@ -180,6 +180,8 @@ void getToken(Token *token, ScannerData *scanner) {
                     space_count++;
                     state = STATE_INDENT;
                 } else if (c == '\n') {
+                    space_count = 0;
+                    has_tab = 0;
                     state = STATE_START;
                 } else if (c == '\t') {
                     state = STATE_INDENT;
@@ -957,7 +959,13 @@ void getToken(Token *token, ScannerData *scanner) {
                     comment_nesting++;
                     state = STATE_COMMENT_NESTING;
                 } else {
+                    ungetc(next_c, stdin);
+                    if (has_tab) {
                     token->type = TOKEN_ERROR;
+                    } else {
+                        token->type = TOKEN_DIV;
+                        scanner->new_line = 0;
+                    }
                     token_found = 1;
                 }
             } else {
