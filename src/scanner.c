@@ -153,6 +153,7 @@ void get_token(Token *token, ScannerData *scanner) {
     if (scanner->dedent > 0) {
         scanner->dedent--;
         token->type = TOKEN_DEDENT;
+        token->line = scanner->line;
         return;
     }
 
