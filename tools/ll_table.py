@@ -23,10 +23,10 @@ EXPRESSION_FIRST_SET = {
     "TOKEN_LIST",
 }
 
-grammar_path = Path(__file__).parent.parent / "grammar.txt"
-csv_path = Path(__file__).parent.parent / "grammar.csv"
-grammar_stripped_path = Path(__file__).parent.parent / "grammar_striped.txt"
-
+doc_path = Path(__file__).parent.parent / "docs"
+grammar_path = doc_path / "grammar.txt"
+csv_path = doc_path / "grammar.csv"
+grammar_stripped_path = doc_path / "grammar_striped.txt"
 
 def is_terminal(string: str):
     return string.isupper()

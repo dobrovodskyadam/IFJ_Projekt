@@ -14,6 +14,7 @@
 #include "scanner.h"
 #include "symtable.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@ static Node *current_function;
 
 typedef struct {
     const char *name;
-    DataType return_type;
+    Type return_type;
     unsigned int param_count;
     DataType *params;
 } BuiltIn;
@@ -33,20 +34,19 @@ typedef struct {
 //  Acts as helper structure for the syntactic analyzer
 const BuiltIn built_in_functions[] =
     {
-        {"print",       TYPE_UNIT,   1, (DataType[]){TYPE_ANY}},
-        {"readLine",    TYPE_STRING, 0, NULL},
-        {"readInt",     TYPE_INT,    0, NULL},
-        {"readDouble",  TYPE_DOUBLE, 0, NULL},
-        {"readBoolean", TYPE_BOOL,   0, NULL},
-        {"toStr",       TYPE_STRING, 1, (DataType[]){TYPE_ANY}},
-        {"toInt",       TYPE_INT,    1, (DataType[]){TYPE_DOUBLE}},
-        {"strLength",   TYPE_INT,    1, (DataType[]){TYPE_STRING}},
-        {"subStr",      TYPE_STRING, 3, (DataType[]){TYPE_STRING, TYPE_INT, TYPE_INT}},
-        {"ord",         TYPE_INT,    2, (DataType[]){TYPE_STRING, TYPE_INT}},
-        {"chr",         TYPE_STRING, 1, (DataType[]){TYPE_INT}},
-
+        {"print",       {TYPE_UNIT, NULL},   1, (DataType[]){TYPE_ANY}},
+        {"readLine",    {TYPE_STRING, NULL}, 0, NULL},
+        {"readInt",     {TYPE_INT, NULL},    0, NULL},
+        {"readDouble",  {TYPE_DOUBLE, NULL}, 0, NULL},
+        {"readBoolean", {TYPE_BOOL, NULL},   0, NULL},
+        {"toStr",       {TYPE_STRING, NULL}, 1, (DataType[]){TYPE_ANY}},
+        {"toInt",       {TYPE_INT, NULL},    1, (DataType[]){TYPE_DOUBLE}},
+        {"strLength",   {TYPE_INT, NULL},    1, (DataType[]){TYPE_STRING}},
+        {"subStr",      {TYPE_STRING, NULL}, 3, (DataType[]){TYPE_STRING, TYPE_INT, TYPE_INT}},
+        {"ord",         {TYPE_INT, NULL},    2, (DataType[]){TYPE_STRING, TYPE_INT}},
+        {"chr",         {TYPE_STRING, NULL}, 1, (DataType[]){TYPE_INT}},
+        {"List.range",  {TYPE_LIST, &(Type){TYPE_INT, NULL}}, 3, (DataType[]){TYPE_INT, TYPE_INT, TYPE_INT}},
 };
-
 
 /// @brief Rules for deducing the actual return type
 typedef enum {
@@ -209,7 +209,7 @@ void built_in_function(symtab_t *symtable, NodeList *built_in_ast) {
     // Add each to symtable to the scope = 0
     for (unsigned int i = 0; i < count; i++) {
         Node *function = ASTNewNode(NODE_FUNCTION_DEF, 0);
-        function->data.function_def_data.return_type.kind = built_in_functions[i].return_type;
+        function->data.function_def_data.return_type = built_in_functions[i].return_type;
         function->data.function_def_data.name = copy_string(built_in_functions[i].name);
 
         // Copy the parameter nodes
@@ -632,6 +632,14 @@ Type check_expression(symtab_t *symtable, Node *node) {
                                node->data.call_data.name);
                 } else {
                     check_function(symtable, item.decl);
+                }
+            }
+
+            // Hard coded test for zero step for function List.range
+            if (strcmp(node->data.call_data.name, "List.range") == 0) {
+                Node *step = node->data.call_data.arguments.list[2];
+                if (step->kind == NODE_INT && step->data.int_value == 0) {
+                    error_exit(ERR_SEMANTIC_OTHER, node->line, "zero step in List.range");
                 }
             }
 

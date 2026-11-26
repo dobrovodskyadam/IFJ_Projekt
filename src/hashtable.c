@@ -13,6 +13,23 @@
 
 #include "hashtable.h"
 
+/// @param NOT Never used item
+/// @param USE Item currently in use
+/// @param DEL Preveously used, now deleted
+typedef enum { NOT, USE, DEL } item_used;
+
+/// @brief Item of hashtable, a single symbol
+/// @param id     Name of the symbol, points into the AST
+/// @param decl   Declaration node (FUNCTION_DEF, PARAMETER or VARIABLE_DECLARATION)
+/// @param id_cnt State of id_cnt from symtable in moment of adding (unique number)
+/// @param used   NOT == never used, USE == used, DEL == deleted
+typedef struct htab_item {
+    const char *id;
+    struct Node *decl;
+    unsigned id_cnt;
+    item_used used;
+} htab_item_t;
+
 /// @brief Standart hash function, creates hash from id
 /// @param id Identifier of symbol
 /// @return Created hash
@@ -100,4 +117,14 @@ void hash_item_del(htab_t tab, char *id) {
 /// @param tab Hashtable
 void htab_dtor(htab_t tab) {
     free(tab);
+}
+
+/// @brief
+struct Node *hash_item_decl(const htab_item_t *item) {
+    return item->decl;
+}
+
+/// @brief
+unsigned hash_item_id_cnt(const htab_item_t *item) {
+    return item->id_cnt;
 }
