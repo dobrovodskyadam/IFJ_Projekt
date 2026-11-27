@@ -40,21 +40,32 @@ struct htab_item {
     item_used used;
 };
 
+/// @brief Hashtable representing single scope
+/// @param cap   Capacity of hashtable, can be dynamically increased
+/// @param size  Current number of items
+/// @param items Array of hashtable items
 struct htab {
     unsigned cap;
     unsigned size;
     htab_item_t *items;
 };
 
+/// @brief Search in bit array sieve
+/// @param idx Index of searched bit
+/// @return Bool value of searched bit
 static bool sieve_get(unsigned idx){
     return sieve[idx / BITS_PER_ULONG] >> (idx % BITS_PER_ULONG) & 1UL;
 }
 
+/// @brief Setting of bit in bit array sieve to true
+/// @param idx Index of bit being set
 static void sieve_set(unsigned idx){
     unsigned long mask = 1UL << (idx % BITS_PER_ULONG);
     sieve[idx / BITS_PER_ULONG] = sieve[idx / BITS_PER_ULONG] | mask;
 }
 
+/// @brief Resizing bit array sieve to new size and calculating new primes
+/// @param new_size New size of bit array sieve
 static void sieve_resize(unsigned new_size){
     if(new_size <= sieve_size) return;
     unsigned new_size_blocks = (new_size / BITS_PER_ULONG ) + (new_size % BITS_PER_ULONG != 0);
@@ -95,6 +106,9 @@ static void sieve_resize(unsigned new_size){
 
 }
 
+/// @brief Searching sieve for prime number bigger than min
+/// @param min Minimum size of prime number
+/// @return prime number
 static unsigned next_prime(size_t min){
     if(min <= 2) return 2;
     if(min % 2 == 0) min ++;
@@ -120,6 +134,8 @@ static unsigned hash_func(const char *id) {
     return hash;
 }
 
+/// @brief Resizing and rehousing of hashtable to double its size
+/// @param tab Hashtable to be resized
 static void htab_resize(htab_t tab){
     unsigned new_cap = next_prime(tab->cap * 2);
     htab_item_t *new_items = calloc(new_cap, sizeof(htab_item_t));
