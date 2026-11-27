@@ -866,14 +866,15 @@ Node *parse_list_range(void) {
 
 /// @brief
 Node *parse(void) {
-    init_scanner_data(&scanner);
     fill_tokens();
     return parse_start();
 }
 
 /// @brief
 int main(void) {
+    init_scanner_data(&scanner);
     Node *root = parse();
+    free_scanner_data(&scanner);
 
 #ifdef DEBUG
     ASTprint(root, 0);
