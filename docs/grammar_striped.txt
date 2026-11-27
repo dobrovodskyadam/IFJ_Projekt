@@ -63,29 +63,32 @@
 63: <st-then-part> -> TOKEN_EOL <block> <st-opt-else>
 64: <st-then-part> -> <expression> <st-after-inline-part>
 65: <st-then-part> -> TOKEN_RETURN <expression> <st-after-inline-part>
-66: <st-else-part> -> TOKEN_EOL <block>
-67: <st-else-part> -> <expression> <statement-end>
-68: <st-else-part> -> <if-statement>
-69: <st-else-part> -> <return>
-70: <st-opt-else> -> TOKEN_ELSE <st-else-part>
-71: <st-opt-else> -> ε
-72: <st-after-inline-part> -> TOKEN_ELSE <st-else-part>
-73: <st-after-inline-part> -> TOKEN_EOL <st-opt-else>
-74: <st-after-inline-part> -> TOKEN_SEPARATOR
-75: <if-value> -> TOKEN_IF <expression> TOKEN_THEN <value-then-part>
-76: <value-then-part> -> TOKEN_EOL <block> TOKEN_ELSE <value-else-part>
-77: <value-then-part> -> <expression> <value-after-inline-part>
-78: <value-after-inline-part> -> TOKEN_ELSE <value-else-part>
-79: <value-after-inline-part> -> TOKEN_EOL TOKEN_ELSE <value-else-part>
-80: <value-else-part> -> <expression> <statement-end>
-81: <value-else-part> -> TOKEN_EOL <block>
-82: <value-else-part> -> <if-value>
-83: <list-literal> -> TOKEN_LIST TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
-84: <function-call> -> TOKEN_ID TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
-85: <list-arguments> -> <argument> <more-list-arguments>
-86: <list-arguments> -> ε
-87: <more-list-arguments> -> TOKEN_COMMA <more-list-arguments-after>
-88: <more-list-arguments> -> ε
-89: <more-list-arguments-after> -> <argument> <more-list-arguments>
-90: <more-list-arguments-after> -> ε
-91: <argument> -> <expression>
+66: <st-then-part> -> TOKEN_ID TOKEN_ASSIGN <expression> <st-after-inline-part>
+67: <st-else-part> -> TOKEN_EOL <block>
+68: <st-else-part> -> <expression> <statement-end>
+69: <st-else-part> -> <if-statement>
+70: <st-else-part> -> <return>
+71: <st-else-part> -> <assignment>
+72: <st-opt-else> -> TOKEN_ELSE <st-else-part>
+73: <st-opt-else> -> ε
+74: <st-after-inline-part> -> TOKEN_ELSE <st-else-part>
+75: <st-after-inline-part> -> TOKEN_EOL <st-opt-else>
+76: <st-after-inline-part> -> TOKEN_SEPARATOR
+77: <if-value> -> TOKEN_IF <expression> TOKEN_THEN <value-then-part>
+78: <value-then-part> -> TOKEN_EOL <block> TOKEN_ELSE <value-else-part>
+79: <value-then-part> -> <expression> <value-after-inline-part>
+80: <value-then-part> -> <if-value> <value-after-inline-part>
+81: <value-after-inline-part> -> TOKEN_ELSE <value-else-part>
+82: <value-after-inline-part> -> TOKEN_EOL TOKEN_ELSE <value-else-part>
+83: <value-else-part> -> <expression>
+84: <value-else-part> -> TOKEN_EOL <block>
+85: <value-else-part> -> <if-value>
+86: <list-literal> -> TOKEN_LIST TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
+87: <function-call> -> TOKEN_ID TOKEN_LPAREN <list-arguments> TOKEN_RPAREN
+88: <list-arguments> -> <argument> <more-list-arguments>
+89: <list-arguments> -> ε
+90: <more-list-arguments> -> TOKEN_COMMA <more-list-arguments-after>
+91: <more-list-arguments> -> ε
+92: <more-list-arguments-after> -> <argument> <more-list-arguments>
+93: <more-list-arguments-after> -> ε
+94: <argument> -> <expression>

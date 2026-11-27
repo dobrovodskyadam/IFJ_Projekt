@@ -1,0 +1,71 @@
+1. Řešitelé:
+vedoucí - Adam - xdobroa00 - 282493 - 25%
+člen - Tomáš - xgrubet01 - 282848 - 25%
+člen - Petr - xrysavp00 - 282342 - 25%
+člen - Lukáš Sofka - xsofkal00 - 281834 - 25%
+
+Varianta: TRP-izp
+Implementovaná rozšíření: FUNEXP, BOOLTHEN, CONTROL, LISTS
+Repozitář: https://github.com/dobrovodskyadam/IFJ_Projekt
+
+2. Rozdělení práce
+Práci jsme si rozdělili hned při prvním osobním setkání podle toho, co každého z členů týmu zajímalo.
+Adam si zvolil...
+Petr si zvolil...
+Tomáš si zvolil...
+Lukáš – abstraktní syntaktický strom, syntaktická a sémantická analýza. Tyto zmíněné části spolu úzce souvisí, proto je dělal jeden člověk.
+Dále vytvořil návrh gramatiky pro celý projekt.
+V pozdější fázi projektu upravil tabulku symbolů (symtable) tak, aby vyhovovala potřebám sémantické analýzy.
+
+
+3. Popis spolupráce
+Veškerá komunikace probíhala přes vlastní server na Discordu, kde jsme se pravidelně scházeli a hlásili chyby.
+Repozitář na GitHubu založil Adam a nastavil ochranu hlavní větve, tedy všechny změny do ní lze začlenit pouze pomocí pull request,
+který musí schválit jiný člen týmu, zpravidla vedoucí.
+
+Zpočátku jsme testy psali podle zadání ještě před implementací, v pozdějších fázích to však kvůli neznalosti tématu nebylo příliš jednoduché.
+Před odevzdáním jsme se intenzivně věnovali hledání chyb, a to i s pomocí nástrojů AI. Využívali jsme:
+- jednotkové testy lexikálního analyzátoru v knihovně Google Test
+- pozitivní a negativní testy syntaktické a sémantické analýzy
+- porovnání chování s jazykem Scala 3.10.1
+- ověření v čistém prostředí pomocí nástroje Docker a na serveru Merlin, který slouží jako referenční stroj
+
+Pro formátování jsme používali clang-format se stylem odvozeným od LLVM (BasedOnStyle: LLVM). Všechny soubory .c a .h lze naformátovat příkazem
+`make format`. Některé úseky kódu, kde automatické formátování zhoršovalo čitelnost, jsou ohraničeny `// clang-format off` a `// clang-format on`.
+
+4. Blokové schéma
+
+5. Diagram
+
+6. LL gramatika, LL tabulka, precedenční tabulka
+
+7. Stručný popis každého modulu
+ast.c/.h – modul pro tvorbu abstraktního syntaktického stromu (AST). Obsahuje definice typů uzlů a jejich dat, funkce pro tvorbu
+a uvolňování uzlů, pro vytváření polí uzlů a práci s nimi a funkce pro ladění (např. ASTprint).
+
+error.c/.h – modul s návratovými kódy chyb podle zadání a funkcí error_exit, která ukončí program s příslušným kódem.
+Při překladu s makrem DEBUG_MSG před ukončením programu vypíše ladicí informace o chybě.
+
+expression_parser.c/.h – modul pro precedenční syntaktickou analýzu výrazů. Pomocí precedenční tabulky a zásobníku symbolů provádí operace
+shift a reduce. Při operacích reduce rovnou sestavuje podstrom AST, který je výsledkem funkce parse_expression. Zpracovává aritmetické,
+relační a logické operátory, závorky, přístup ke členům a rozsahy.
+
+parser.c/.h – hlavní modul, který řídí celý překlad a zároveň provádí syntaktickou analýzu metodou rekurzivního sestupu podle
+LL gramatiky. Každému neterminálu odpovídá zpravidla jedna funkce. Parser pracuje s trojicí tokenů – předchozí (previous),
+aktuální (current) a následující (next). Díky tomu dokáže nahlédnout o jeden token dopředu, což využívá například k rozlišení
+přiřazení od výrazu nebo volání funkce od proměnné. Během analýzy sestavuje AST, a pokud narazí na výraz, předá jeho zpracování
+modulu expression_parser. Protože vycházíme z principů syntaxí řízeného překladu, obsahuje tento modul také funkci main.
+
+semantic.c/.h – modul pro sémantickou analýzu nad hotovým AST. Používá tabulku symbolů jako pomocnou strukturu.
+Nejprve vloží vestavěné funkce a signatury uživatelem definovaných funkcí do globálního rozsahu tabulky symbolů.
+Poté ověří, že existuje právě jedna funkce main a že nemá žádné parametry. Následně rekurzivně prochází těla funkcí
+a kontroluje sémantická pravidla – typovou kompatibilitu, redefinice proměnných, zápis do neměnných proměnných, počet a typy
+argumentů, správnost návratových hodnot a další. Návratový typ funkcí, které návratový typ nemají uvedený, se odvozuje
+na vyžádání (on-demand), tedy je-li potřeba vědět návratový typ, zjistí se v místě volaní. Výsledné typy výrazů se ukládají do AST pro potřeby dalších modulů.
+
+8. Použití nástrojů AI
+Lukáš používal Claude Code (převážně model Claude Opus 5.5, pro jednoduché dotazy Claude Haiku 5.5) pro:
+- konfiguraci terminálových nástrojů, například Valgring, Massif-visualizer, Coursier (správce aplikací a knihoven pro Scalu) a další
+- vytvoření základních testů před zahájením implementace modulu sémantické analýzy
+- posouzení některých návrhových rozhodnutí
+- pomocné funkce pro debugging

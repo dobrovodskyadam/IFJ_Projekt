@@ -103,11 +103,13 @@
 <st-then-part> -> TOKEN_EOL <block> <st-opt-else>
 <st-then-part> -> <expression> <st-after-inline-part>
 <st-then-part> -> TOKEN_RETURN <expression> <st-after-inline-part>
+<st-then-part> -> TOKEN_ID TOKEN_ASSIGN <expression> <st-after-inline-part>
 
 <st-else-part> -> TOKEN_EOL <block>
 <st-else-part> -> <expression> <statement-end>
 <st-else-part> -> <if-statement>
 <st-else-part> -> <return>
+<st-else-part> -> <assignment>
 
 <st-opt-else> -> TOKEN_ELSE <st-else-part>
 <st-opt-else> -> ε
@@ -122,11 +124,12 @@
 
 <value-then-part> -> TOKEN_EOL <block> TOKEN_ELSE <value-else-part>
 <value-then-part> -> <expression> <value-after-inline-part>
+<value-then-part> -> <if-value> <value-after-inline-part>
 
 <value-after-inline-part> -> TOKEN_ELSE <value-else-part>
 <value-after-inline-part> -> TOKEN_EOL TOKEN_ELSE <value-else-part>
 
-<value-else-part> -> <expression> <statement-end>
+<value-else-part> -> <expression>
 <value-else-part> -> TOKEN_EOL <block>
 <value-else-part> -> <if-value>
 
