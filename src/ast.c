@@ -1,5 +1,6 @@
 /// @file ast.c
-/// @brief
+/// @brief Module for managing AST, that includes creating nodes, freeing nodes and debug printing
+/// of nodes and types
 /// @date 12-11-2026
 ///
 /// @author Lukas Sofka (xsofkal00)
@@ -16,7 +17,10 @@
 static Type **all_types;
 static unsigned int all_types_capacity, all_types_count = 0;
 
-/// @brief
+/// @brief Allocates new node and zeroes it
+/// @param kind Kind of the node
+/// @param line
+/// @return Pointer to the new node
 Node *ASTNewNode(NodeKind kind, unsigned int line) {
     Node *node = calloc(1, sizeof(Node));
     if (!node) {
@@ -30,7 +34,7 @@ Node *ASTNewNode(NodeKind kind, unsigned int line) {
     return node;
 };
 
-/// @brief
+/// @brief Recursively frees nodes from root to bottom
 void ASTFree(Node *ptr) {
     if (ptr == NULL) {
         return;
@@ -126,14 +130,16 @@ void ASTFree(Node *ptr) {
     free(ptr);
 }
 
-/// @brief
+/// @brief Initializes an empty node list
+/// @param ptr to NodeList
 void NodeListInit(NodeList *ptr) {
     ptr->list = NULL;
     ptr->capacity = 0;
     ptr->count = 0;
 }
 
-/// @brief
+/// @brief Frees all nodes in the list and the list's array
+/// @param ptr List to free
 void NodeListFree(NodeList *ptr) {
     for (unsigned int i = 0; i < ptr->count; i++) {
         ASTFree(ptr->list[i]);
@@ -141,7 +147,9 @@ void NodeListFree(NodeList *ptr) {
     free(ptr->list);
 }
 
-/// @brief
+/// @brief Appends a node to the end of the list
+/// @param ptr List to append to
+/// @param node Node to append
 void NodeListAppend(NodeList *ptr, Node *node) {
     if (ptr->capacity == ptr->count) {
         unsigned int new_capacity = ptr->capacity == 0 ? INITIAL_LIST_CAPACITY : ptr->capacity * 2;
@@ -162,7 +170,9 @@ void NodeListAppend(NodeList *ptr, Node *node) {
     ptr->count++;
 }
 
-/// @brief
+/// @brief Allocates a Type and saves it to the all_types
+/// @param line 
+/// @return Pointer to the new Type
 Type *TypeInit(int line) {
     Type *type = malloc(sizeof(Type));
 
@@ -203,7 +213,7 @@ void TypeFreeAll(void) {
 }
 
 // clang-format off
-/// @brief
+/// @brief NodeKind to Name translation table
 static const char *kind_names[] = {
     [NODE_PROGRAM]              = "PROGRAM",
     [NODE_FUNCTION_DEF]         = "FUNCTION_DEF",
@@ -237,7 +247,7 @@ const char *NodeKindToString(NodeKind kind) {
 
 // clang-format off
 
-/// @brief Helper function for converting DataType to String
+/// @brief Helper function for converting DataType to string
 const char *DataTypeToString(DataType kind) {
     static const char *type_names[] = {
         [TYPE_UNKNOWN] = "Unknown",
@@ -255,7 +265,6 @@ const char *DataTypeToString(DataType kind) {
 }
 // clang-format on
 
-/// @brief
 void TypePrint(const Type *type) {
     if (type->kind == TYPE_LIST) {
         fprintf(stderr, "List[");
@@ -266,27 +275,23 @@ void TypePrint(const Type *type) {
     }
 }
 
-
-/// @brief
 void PrintIndent(int depth) {
     for (int i = 0; i < depth; i++) {
         fprintf(stderr, "  ");
     }
 }
 
-/// @brief
 static void NodeListPrint(const NodeList *list, int indent) {
     for (unsigned int i = 0; i < list->count; i++) {
         ASTprint(list->list[i], indent);
     }
 }
 
-/// @brief
 static const char *boolToString(bool value) {
     return value ? "True" : "False";
 }
 
-/// @brief
+/// @brief Prints the AST for debugging
 void ASTprint(Node *root, int indent) {
     PrintIndent(indent);
     indent++;
