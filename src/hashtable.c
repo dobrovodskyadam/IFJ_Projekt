@@ -14,7 +14,7 @@
 
 #include "hashtable.h"
 
-#define HTAB_INIT_CAPACITY 3
+#define HTAB_INIT_CAPACITY 101
 #define HTAB_MAX_LOAD 0.7
 
 #define BITS_PER_ULONG (sizeof(unsigned long) * CHAR_BIT)
