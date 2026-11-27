@@ -238,8 +238,8 @@ void collect_functions(symtab_t *symtable, Node *root) {
         Node *definition = function_definitions->list[i];
         // If function already exists => error
         if (!item_add(symtable, definition->data.function_def_data.name, definition)) {
-            error_exit(ERR_SEMANTIC_REDEFINITION, definition->line,
-                       "redefinition of a function %s", definition->data.function_def_data.name);
+            error_exit(ERR_SEMANTIC_REDEFINITION, definition->line, "redefinition of a function %s",
+                       definition->data.function_def_data.name);
         }
 
         // If newly added function is main => update ptr and count
@@ -393,9 +393,10 @@ Type check_expression(symtab_t *symtable, Node *node) {
             if (result->arg_count == -1) {
                 // If no args are expected and some are given => error
                 if (arguments) {
-                    error_exit(ERR_SEMANTIC_TYPE, node->line,
-                               "dot operator `%s` takes no arguments (write it without parentheses)",
-                               name);
+                    error_exit(
+                        ERR_SEMANTIC_TYPE, node->line,
+                        "dot operator `%s` takes no arguments (write it without parentheses)",
+                        name);
                 }
             } else {
                 // If some args are expected and none is given => error
@@ -662,8 +663,7 @@ Type check_expression(symtab_t *symtable, Node *node) {
             Type index = check_expression(symtable, arguments->list[0]);
             if (index.kind != TYPE_INT) {
                 error_exit(ERR_SEMANTIC_TYPE, node->line,
-                           "index of a list `%s` must be of type Int",
-                           node->data.call_data.name);
+                           "index of a list `%s` must be of type Int", node->data.call_data.name);
             }
 
             itemType = *defined_type.elem;
