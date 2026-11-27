@@ -12,7 +12,6 @@
 
 #include <stdbool.h>
 
-typedef struct symtab_item symtab_item_t;
 typedef struct symtab symtab_t;
 typedef struct Node Node;
 

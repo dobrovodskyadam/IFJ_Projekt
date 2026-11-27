@@ -83,8 +83,7 @@ void scope_rm(symtab_t *stab) {
 /// @brief Adds a symbol to uppermost scope
 /// @param stab Pointer to table of symbols
 /// @param id Identifier of symbol
-/// @param type Typo of symbol
-/// @param modif 1 == modifiable, 0 == not
+/// @param decl Declaration node (FUNCTION_DEF, PARAMETER or VARIABLE_DECLARATION)
 /// @return True for successfully added item
 bool item_add(symtab_t *stab, char *id, Node *decl) {
     if (stab == NULL || stab->top == NULL)
@@ -118,7 +117,7 @@ bool item_lookup(symtab_t *stab, char *id) {
 /// @param stab Pointer to table of symbols
 /// @param id Identifier of symbol
 void item_del(symtab_t *stab, char *id) {
-    if (stab == NULL)
+    if (stab == NULL || stab->top == NULL)
         return;
 
     hash_item_del(stab->top->scope, id);

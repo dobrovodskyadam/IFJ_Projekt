@@ -12,18 +12,14 @@
 
 #include <stdbool.h>
 
-#define MAX_HTAB_ITEMS 1023 // Maximum of hashtable items
-
 struct Node;
 
 typedef struct htab_item htab_item_t;
-typedef htab_item_t *htab_t;
-
-unsigned hash_func(const char *id);
+typedef struct htab *htab_t;
 
 htab_t htab_init(void);
 
-bool hash_item_add(htab_t tab, char *id, struct Node *decl, int id_cnt);
+bool hash_item_add(htab_t tab, char *id, struct Node *decl, unsigned id_cnt);
 htab_item_t *hash_item_lookup(htab_t tab, char *id);
 void hash_item_del(htab_t tab, char *id);
 
